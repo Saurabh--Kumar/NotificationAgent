@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from sqlalchemy import Column, String, Text, JSON, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, String, Text, JSON, DateTime, ForeignKey, Integer, Enum, Uuid
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+
 import uuid
 
 from ..db.session import Base
@@ -14,9 +14,9 @@ class NotificationSession(Base):
     """
     __tablename__ = "notification_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    company_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    admin_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    company_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    admin_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
     status = Column(Enum(NotificationSessionStatus), default=NotificationSessionStatus.PROCESSING, nullable=False)
     
     # Session metadata
@@ -39,14 +39,20 @@ class NotificationSession(Base):
     
     # Foreign key to associate with campaign
     campaign_id = Column(
-        UUID(as_uuid=True), 
+        Uuid(as_uuid=True), 
         ForeignKey("campaigns.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
+
     
     # Relationship with Campaign (many-to-one)
-    campaign = relationship("Campaign", back_populates="notification_sessions")
+    campaign = relationship(
+        "Campaign", 
+        back_populates="notification_sessions",
+        foreign_keys=[campaign_id],
+        primaryjoin="NotificationSession.campaign_id == Campaign.id"
+    )
     
     def add_suggestions(self, suggestions: List[str]) -> None:
         if not self.all_suggestions:

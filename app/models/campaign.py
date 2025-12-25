@@ -1,7 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Enum, Uuid
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+
 import uuid
 
 from ..db.session import Base
@@ -11,8 +11,9 @@ class Campaign(Base):
 
     __tablename__ = "campaigns"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    company_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    company_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     theme = Column(String(100), nullable=False)
@@ -23,17 +24,12 @@ class Campaign(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
-    # Foreign key to associate with notification session
-    notification_session_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("notification_sessions.id", ondelete="CASCADE"),
-        nullable=True
-    )
-    
     # Relationship with NotificationSession (one-to-many)
     notification_sessions = relationship(
         "NotificationSession", 
         back_populates="campaign",
+        foreign_keys="[NotificationSession.campaign_id]",
+        primaryjoin="Campaign.id == NotificationSession.campaign_id",
         cascade="all, delete-orphan"
     )
 
