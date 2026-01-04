@@ -36,11 +36,13 @@ def create_notification_session(
 
 def get_notification_session(
     db: Session, 
-    session_id: UUID
+    session_id: UUID,
+    company_id: UUID
 ) -> Optional[NotificationSession]:
 
     return db.query(NotificationSession).filter(
-        NotificationSession.id == session_id
+        NotificationSession.id == session_id,
+        NotificationSession.company_id == company_id
     ).first()
 
 

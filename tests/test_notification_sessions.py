@@ -107,3 +107,25 @@ def test_get_nonexistent_session(client):
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "Session not found" in response.text
+
+
+def test_get_session_wrong_company_id(client, db: Session, test_company_id, test_campaign_id):
+    """Test that requesting a session with wrong company_id returns 404 (multi-tenancy enforcement)."""
+    session_data = SessionCreate(
+        topic="Test Topic",
+        company_id=uuid.UUID(test_company_id),
+        admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        campaign_id=uuid.UUID(test_campaign_id)
+    )
+    db_session = crud_session.create_notification_session(db=db, session_in=session_data)
+    db.commit()
+
+    # Try to access with a different company_id
+    wrong_company_id = "99999999-9999-9999-9999-999999999999"
+    response = client.get(
+        f"/api/v1/notification-sessions/{db_session.id}",
+        params={"company_id": wrong_company_id}
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert "Session not found" in response.text
