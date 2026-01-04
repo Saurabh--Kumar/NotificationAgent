@@ -72,9 +72,21 @@ async def get_notification_session(
     Returns:
         The notification session details
     """
-    db_session = crud_session.get_notification_session(db, session_id=session_id)
+    try:
+        company_uuid = UUID(company_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid company_id format"
+        )
     
-    if not db_session or str(db_session.company_id) != company_id:
+    db_session = crud_session.get_notification_session(
+        db, 
+        session_id=session_id,
+        company_id=company_uuid
+    )
+    
+    if not db_session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
