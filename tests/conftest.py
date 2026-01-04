@@ -7,6 +7,13 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import Base
 from app.main import app
 from app.api.dependencies import get_db
+from unittest.mock import Mock, patch
+
+# Mock Celery task to avoid Redis dependency
+import app.api.endpoints.notification_sessions as notification_sessions_module
+notification_sessions_module.run_agent_task = Mock()
+notification_sessions_module.run_agent_task.delay = Mock(return_value=Mock(id="test-task-id"))
+
 
 
 # Create a test database in memory

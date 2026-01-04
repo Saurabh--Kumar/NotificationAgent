@@ -23,3 +23,5 @@ app.add_middleware(
 app.include_router(health_router, prefix="/health", tags=["Health"])
 app.include_router(notification_sessions_router, prefix="/api/v1", tags=["Notification Sessions"])
 
+
+

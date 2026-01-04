@@ -23,7 +23,22 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
+    # Celery / Redis
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: str = os.getenv("REDIS_PORT", "6379")
+    ENABLE_ASYNC_TASKS: bool = os.getenv("ENABLE_ASYNC_TASKS", "false").lower() == "true"
+    
+    @property
+    def CELERY_BROKER_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+    
+    @property
+    def CELERY_RESULT_BACKEND(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+
+    
     # CORS
+
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
     
     class Config:

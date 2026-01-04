@@ -4,6 +4,8 @@ from uuid import UUID
 from app.crud import session as crud_session
 from app.schemas.session import SessionCreate, SessionResponse, Session
 from app.api.dependencies import get_db
+from app.tasks import run_agent_task
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -23,7 +25,7 @@ async def create_notification_session(
     Initiate a new notification generation session.
     
     This endpoint creates a new session for generating notifications based on the provided topic.
-    The session will be processed asynchronously.
+    The session will be processed asynchronously if ENABLE_ASYNC_TASKS is true, otherwise synchronously.
     
     Args:
         session_data: Session creation data including topic, campaign_id, company_id, and admin_id
@@ -34,10 +36,17 @@ async def create_notification_session(
     """
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
     
+    if settings.ENABLE_ASYNC_TASKS:
+        run_agent_task.delay(str(db_session.id))
+    else:
+        run_agent_task(str(db_session.id))
+    
     return {
         "session_id": db_session.id,
         "status": db_session.status.value
     }
+
+
 
 
 
