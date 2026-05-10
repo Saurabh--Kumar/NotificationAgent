@@ -62,3 +62,14 @@ class Session(SessionBase):
 class SessionResponse(BaseModel):
     session_id: UUID = Field(..., description="ID of the created session")
     status: str = Field(..., description="Current status of the session")
+
+
+class FeedbackRequest(BaseModel):
+    feedback: str = Field(..., description="Feedback text to append to conversation history")
+
+
+class PublishRequest(BaseModel):
+    selected_suggestion_ids: List[str] = Field(
+        ...,
+        description="List of suggestion IDs to publish"
+    )

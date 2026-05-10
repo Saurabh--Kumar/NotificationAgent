@@ -1,11 +1,13 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from uuid import UUID
 
 from app.crud import session as crud_session
-from app.schemas.session import SessionCreate, SessionResponse, Session
+from app.schemas.session import SessionCreate, SessionResponse, Session, FeedbackRequest, PublishRequest
 from app.api.dependencies import get_db
 from app.tasks import run_agent_task
 from app.core.config import settings
+from app.models.enums import NotificationSessionStatus
 
 router = APIRouter()
 
@@ -92,5 +94,84 @@ async def get_notification_session(
             detail="Session not found"
         )
     
+    return db_session
+
+
+@router.post(
+    "/notification-sessions/{session_id}/feedback",
+    response_model=Session,
+    status_code=status.HTTP_200_OK,
+    summary="Append feedback to a notification session",
+)
+async def add_feedback(
+    session_id: UUID,
+    feedback: FeedbackRequest,
+    company_id: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        company_uuid = UUID(company_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid company_id format"
+        )
+    db_session = crud_session.get_notification_session(
+        db, session_id=session_id, company_id=company_uuid
+    )
+    if not db_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+    # Append feedback to conversation history
+    db_session.conversation_history.append({"role": "user", "content": feedback.feedback})
+    db_session.status = NotificationSessionStatus.AWAITING_REVIEW
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+
+@router.post(
+    "/notification-sessions/{session_id}/publish",
+    response_model=Session,
+    status_code=status.HTTP_200_OK,
+    summary="Publish selected notifications for a session",
+)
+async def publish_notifications(
+    session_id: UUID,
+    publish_req: PublishRequest,
+    company_id: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        company_uuid = UUID(company_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid company_id format"
+        )
+    db_session = crud_session.get_notification_session(
+        db, session_id=session_id, company_id=company_uuid
+    )
+    if not db_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+    # Filter selected suggestions
+    selected = [s for s in db_session.all_suggestions if s["id"] in publish_req.selected_suggestion_ids]
+    if not selected:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid suggestions selected"
+        )
+    # Dummy publish (log to console)
+    for s in selected:
+        logging.info(f"Published notification: {s['text']}")
+    db_session.selected_suggestions = selected
+    db_session.status = NotificationSessionStatus.COMPLETED
+    db.commit()
+    db.refresh(db_session)
     return db_session
 

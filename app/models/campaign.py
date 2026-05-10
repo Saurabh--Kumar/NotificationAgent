@@ -13,6 +13,10 @@ class Campaign(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     company_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    company_name = Column(String(255), nullable=False, index=True)
+    brand_voice = Column(Text, nullable=True)
+    target_audience = Column(Text, nullable=True)
+    industry = Column(String(100), nullable=True)
 
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)

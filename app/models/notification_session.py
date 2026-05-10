@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy import Column, String, Text, JSON, DateTime, ForeignKey, Integer, Enum, Uuid
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, reconstructor
 
 import uuid
 
@@ -90,3 +90,17 @@ class NotificationSession(Base):
 
     def __repr__(self):
         return f"<NotificationSession(id={self.id}, status={self.status}, company_id={self.company_id})>"
+
+    @reconstructor
+    def init_on_load(self) -> None:
+        """Ensure list attributes are never None after loading from DB."""
+        if self.conversation_history is None:
+            self.conversation_history = []
+        if self.all_suggestions is None:
+            self.all_suggestions = []
+        if self.selected_suggestions is None:
+            self.selected_suggestions = []
+        if self.feedback_history is None:
+            self.feedback_history = []
+        if self.rejected_suggestions is None:
+            self.rejected_suggestions = []
