@@ -129,3 +129,110 @@ def test_get_session_wrong_company_id(client, db: Session, test_company_id, test
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "Session not found" in response.text
+
+
+def test_add_feedback(client, db: Session, test_company_id, test_campaign_id):
+    """Test appending feedback to a notification session."""
+    session_data = SessionCreate(
+        topic="Test Topic",
+        company_id=uuid.UUID(test_company_id),
+        admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        campaign_id=uuid.UUID(test_campaign_id)
+    )
+    db_session = crud_session.create_notification_session(db=db, session_in=session_data)
+    db.commit()
+
+    feedback_data = {"feedback": "Make it more exciting and urgent"}
+    response = client.post(
+        f"/api/v1/notification-sessions/{db_session.id}/feedback",
+        json=feedback_data,
+        params={"company_id": test_company_id}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert len(data["conversation_history"]) == 2
+    assert data["conversation_history"][-1]["role"] == "user"
+    assert "Make it more exciting and urgent" in data["conversation_history"][-1]["content"]
+
+
+def test_add_feedback_nonexistent_session(client):
+    """Test that adding feedback to a non-existent session returns 404."""
+    non_existent_id = "00000000-0000-0000-0000-000000000000"
+    feedback_data = {"feedback": "Some feedback"}
+    response = client.post(
+        f"/api/v1/notification-sessions/{non_existent_id}/feedback",
+        json=feedback_data,
+        params={"company_id": "11111111-1111-1111-1111-111111111111"}
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_publish_notifications(client, db: Session, test_company_id, test_campaign_id):
+    """Test publishing selected notifications for a session."""
+    session_data = SessionCreate(
+        topic="Test Topic",
+        company_id=uuid.UUID(test_company_id),
+        admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        campaign_id=uuid.UUID(test_campaign_id)
+    )
+    db_session = crud_session.create_notification_session(db=db, session_in=session_data)
+    # Manually set suggestions for testing
+    db_session.all_suggestions = [
+        {"id": "sugg-1", "text": "Notification 1", "status": "pending"},
+        {"id": "sugg-2", "text": "Notification 2", "status": "pending"},
+        {"id": "sugg-3", "text": "Notification 3", "status": "pending"},
+    ]
+    db_session.status = NotificationSessionStatus.AWAITING_REVIEW
+    db.commit()
+
+    publish_data = {"selected_suggestion_ids": ["sugg-1", "sugg-3"]}
+    response = client.post(
+        f"/api/v1/notification-sessions/{db_session.id}/publish",
+        json=publish_data,
+        params={"company_id": test_company_id}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == NotificationSessionStatus.COMPLETED.value
+    assert len(data["selected_suggestions"]) == 2
+    assert data["selected_suggestions"][0]["id"] == "sugg-1"
+    assert data["selected_suggestions"][1]["id"] == "sugg-3"
+
+
+def test_publish_notifications_nonexistent_session(client):
+    """Test that publishing for a non-existent session returns 404."""
+    non_existent_id = "00000000-0000-0000-0000-000000000000"
+    publish_data = {"selected_suggestion_ids": ["sugg-1"]}
+    response = client.post(
+        f"/api/v1/notification-sessions/{non_existent_id}/publish",
+        json=publish_data,
+        params={"company_id": "11111111-1111-1111-1111-111111111111"}
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_publish_notifications_invalid_ids(client, db: Session, test_company_id, test_campaign_id):
+    """Test that publishing with invalid suggestion IDs returns 400."""
+    session_data = SessionCreate(
+        topic="Test Topic",
+        company_id=uuid.UUID(test_company_id),
+        admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        campaign_id=uuid.UUID(test_campaign_id)
+    )
+    db_session = crud_session.create_notification_session(db=db, session_in=session_data)
+    db_session.all_suggestions = [
+        {"id": "sugg-1", "text": "Notification 1", "status": "pending"},
+    ]
+    db_session.status = NotificationSessionStatus.AWAITING_REVIEW
+    db.commit()
+
+    publish_data = {"selected_suggestion_ids": ["non-existent-id"]}
+    response = client.post(
+        f"/api/v1/notification-sessions/{db_session.id}/publish",
+        json=publish_data,
+        params={"company_id": test_company_id}
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "No valid suggestions selected" in response.text

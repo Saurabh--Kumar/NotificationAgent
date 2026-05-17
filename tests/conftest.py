@@ -53,14 +53,18 @@ def init_db():
         with connection.begin():
             connection.execute(text("""
                 INSERT INTO campaigns 
-                (id, company_id, name, description, theme, category, status, start_date, end_date, created_at, updated_at)
+                (id, company_id, company_name, name, description, theme, category, brand_voice, target_audience, industry, status, start_date, end_date, created_at, updated_at)
                 VALUES 
                 ('33333333-3333-3333-3333-333333333333', 
                     '11111111-1111-1111-1111-111111111111', 
+                    'Test Company',
                     'Test Campaign', 
                     'Test Description', 
                     'Test Theme', 
-                    'Test Category', 
+                    'Test Category',
+                    'Friendly and professional',
+                    'Young adults aged 18-35',
+                    'Technology',
                     'DRAFT',
                     '2025-01-01 00:00:00',
                     '2025-12-31 23:59:59',

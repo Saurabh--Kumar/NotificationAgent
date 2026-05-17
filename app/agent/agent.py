@@ -1,10 +1,11 @@
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
 from typing import TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage
 import operator
 from app.agent.tools import fetch_active_campaigns, fetch_dummy_news
+from app.core.config import settings
 
 
 class AgentState(TypedDict):
@@ -13,8 +14,12 @@ class AgentState(TypedDict):
     topic: str | None
 
 
-# Initialize OpenAI LLM
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7)
+# Initialize Ollama LLM (local gemma4:e2b)
+llm = ChatOllama(
+    model=settings.OLLAMA_MODEL,
+    base_url=settings.OLLAMA_BASE_URL,
+    temperature=0.7,
+)
 llm_with_tools = llm.bind_tools([fetch_active_campaigns, fetch_dummy_news])
 
 

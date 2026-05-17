@@ -57,7 +57,7 @@ class NotificationSession(Base):
     def add_suggestions(self, suggestions: List[str]) -> None:
         if not self.all_suggestions:
             self.all_suggestions = []
-        self.all_suggestions.extend(suggestions)
+        self.all_suggestions = [*self.all_suggestions, *suggestions]
         self.updated_at = datetime.utcnow()
     
     def update_selections(self, selected_indices: List[int]) -> None:
@@ -74,12 +74,12 @@ class NotificationSession(Base):
     def add_feedback(self, feedback: str) -> None:
         if not self.feedback_history:
             self.feedback_history = []
-            
-        self.feedback_history.append({
+
+        self.feedback_history = [*self.feedback_history, {
             'timestamp': datetime.utcnow().isoformat(),
             'feedback': feedback,
             'topic_version': self.current_topic_version
-        })
+        }]
         self.last_feedback_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
     

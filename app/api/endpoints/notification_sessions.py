@@ -124,8 +124,11 @@ async def add_feedback(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
         )
-    # Append feedback to conversation history
-    db_session.conversation_history.append({"role": "user", "content": feedback.feedback})
+    # Append feedback to conversation history (reassign so SQLAlchemy detects the change)
+    db_session.conversation_history = [
+        *db_session.conversation_history,
+        {"role": "user", "content": feedback.feedback}
+    ]
     db_session.status = NotificationSessionStatus.AWAITING_REVIEW
     db.commit()
     db.refresh(db_session)
