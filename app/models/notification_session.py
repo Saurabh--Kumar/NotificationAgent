@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy import Column, String, Text, JSON, DateTime, ForeignKey, Integer, Enum, Uuid
 from sqlalchemy.orm import relationship, reconstructor
@@ -33,8 +33,8 @@ class NotificationSession(Base):
     feedback_history = Column(JSON, default=list)  # History of feedback provided by admin
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     last_feedback_at = Column(DateTime, nullable=True)  # When the last feedback was provided
     
     # Foreign key to associate with campaign
@@ -58,7 +58,7 @@ class NotificationSession(Base):
         if not self.all_suggestions:
             self.all_suggestions = []
         self.all_suggestions = [*self.all_suggestions, *suggestions]
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def update_selections(self, selected_indices: List[int]) -> None:
         if not self.all_suggestions:
@@ -69,24 +69,24 @@ class NotificationSession(Base):
             for i in selected_indices 
             if 0 <= i < len(self.all_suggestions)
         ]
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def add_feedback(self, feedback: str) -> None:
         if not self.feedback_history:
             self.feedback_history = []
 
         self.feedback_history = [*self.feedback_history, {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'feedback': feedback,
             'topic_version': self.current_topic_version
         }]
-        self.last_feedback_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_feedback_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
     
     def change_topic(self, new_topic: str) -> None:
         self.topic = new_topic
         self.current_topic_version += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __repr__(self):
         return f"<NotificationSession(id={self.id}, status={self.status}, company_id={self.company_id})>"

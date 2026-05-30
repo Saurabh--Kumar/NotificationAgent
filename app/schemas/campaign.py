@@ -43,8 +43,7 @@ class CampaignInDBBase(CampaignBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class Campaign(CampaignInDBBase):
@@ -54,5 +53,4 @@ class Campaign(CampaignInDBBase):
 class CampaignWithSessions(Campaign):
     notification_sessions: List["NotificationSession"] = []
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

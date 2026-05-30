@@ -36,12 +36,7 @@ class SessionBase(SessionCreate):
         description="When the session was last updated"
     )
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v)
-        }
+    model_config = {"from_attributes": True}
 
 
 class Session(SessionBase):

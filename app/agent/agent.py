@@ -65,7 +65,11 @@ workflow = StateGraph(AgentState)
 workflow.add_node("agent", agent_node)
 workflow.add_node("tools", tools_node)
 workflow.set_entry_point("agent")
-workflow.add_conditional_edges("agent", should_continue)
+workflow.add_conditional_edges(
+    "agent",
+    should_continue,
+    {"tools": "tools", END: END}
+)
 workflow.add_edge("tools", "agent")
 
 notification_agent = workflow.compile()
