@@ -9,22 +9,18 @@ def test_ollama_llm_generates_notifications():
     """Test that the agent can generate notifications using Ollama."""
     # This test requires Ollama to be running with gemma4:e2b model
     try:
-        messages = generate_notifications(topic="product launch", company_id="11111111-1111-1111-1111-111111111111")
-        assert messages is not None
-        assert len(messages) > 0
+        suggestions = generate_notifications(topic="product launch", company_id="11111111-1111-1111-1111-111111111111")
+        assert suggestions is not None
+        assert isinstance(suggestions, list), f"Expected list, got {type(suggestions)}"
+        assert len(suggestions) > 0, "Expected at least one notification suggestion"
         # Check that we got some response content
-        response_text = str(messages)
-        assert len(response_text) > 0
-        print(f"Agent response: {response_text[:5000]}...")
+        print(f"Agent response: {suggestions}...")
     except Exception as e:
         pytest.skip(f"Ollama not available or model not loaded: {e}")
 
 
 def test_fetch_news_tool():
-    """Test that the fetch_news tool can retrieve real news from NewsAPI."""
-    if not settings.NEWSAPI_KEY:
-        pytest.skip("NEWSAPI_KEY not configured in environment")
-    
+    """Test that the fetch_news tool can retrieve news (real or dummy for testing)."""
     result = fetch_news.invoke({})
     assert result is not None
     assert len(result) > 0

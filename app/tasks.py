@@ -27,35 +27,31 @@ def run_agent_task(session_id: str) -> dict:
         
         # Call LangGraph agent to generate notifications
         from app.agent import generate_notifications
-        from langchain_core.messages import AIMessage
 
         topic = db_session.topic or "general notifications"
         company_id = str(db_session.company_id) if db_session.company_id else None
 
         try:
-            agent_messages = generate_notifications(topic=topic, company_id=company_id)
+            suggestions = generate_notifications(topic=topic, company_id=company_id)
             
-            # Extract suggestions and conversation history from agent messages
-            suggestions = []
-            conversation = []
+            # Convert list of strings to list of suggestion objects
+            suggestions_list = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "text": text,
+                    "status": "pending"
+                }
+                for text in suggestions
+            ]
             
-            for msg in agent_messages:
-                if isinstance(msg, AIMessage):
-                    # Parse notification suggestions from agent response
-                    # Split content into individual suggestions (assuming one per line)
-                    suggestion_texts = [line.strip() for line in msg.content.split("\n") if line.strip()]
-                    for text in suggestion_texts:
-                        suggestions.append({
-                            "id": str(uuid.uuid4()),
-                            "text": text,
-                            "status": "pending"
-                        })
-                # Add to conversation history
-                role = "assistant" if isinstance(msg, AIMessage) else "user"
-                conversation.append({"role": role, "content": msg.content})
+            # Add to conversation history
+            conversation = [
+                {"role": "user", "content": f"Generate notifications for topic: {topic}"},
+                {"role": "assistant", "content": str(suggestions)}
+            ]
 
             # Update session with generated suggestions and conversation history
-            db_session.all_suggestions = suggestions
+            db_session.all_suggestions = suggestions_list
             db_session.conversation_history = conversation
             db.commit()
 

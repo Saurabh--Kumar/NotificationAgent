@@ -5,6 +5,7 @@ from typing import TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage
 import operator
 from app.agent.tools import fetch_active_campaigns, fetch_news
+from app.agent.prompts import NOTIFICATION_GENERATION_PROMPT
 from app.core.config import settings
 
 
@@ -34,13 +35,17 @@ def tools_node(state: AgentState):
     last_message = messages[-1]
     tool_calls = getattr(last_message, "tool_calls", [])
     tool_messages = []
+    company_id = state.get("company_id")
 
     for tool_call in tool_calls:
         tool_name = tool_call["name"]
         tool_args = tool_call["args"]
         tool_id = tool_call["id"]
 
+        # Inject company_id from state if the tool accepts it
         if tool_name == "fetch_active_campaigns":
+            if company_id and "company_id" not in tool_args:
+                tool_args = {**tool_args, "company_id": company_id}
             result = fetch_active_campaigns.invoke(tool_args)
         elif tool_name == "fetch_news":
             result = fetch_news.invoke(tool_args)
@@ -78,9 +83,7 @@ notification_agent = workflow.compile()
 def generate_notifications(topic: str, company_id: str | None = None) -> list:
     """Invoke the agent to generate notification suggestions for a given topic."""
     initial_message = HumanMessage(
-        content=f"Generate 3-5 engaging notification suggestions for the topic: {topic}. "
-        "Use fetch_active_campaigns to get campaign details and fetch_news for context. "
-        "Each notification should be short, catchy, and aligned with the campaign's brand voice and target audience."
+        content=NOTIFICATION_GENERATION_PROMPT.format(topic=topic, company_id=company_id)
     )
     state = {
         "messages": [initial_message],
@@ -88,4 +91,15 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
         "topic": topic,
     }
     result = notification_agent.invoke(state)
-    return result["messages"]
+    # Return only the last message content (the actual notification suggestions)
+    messages = result["messages"]
+    if messages:
+        last_message = messages[-1]
+        content = getattr(last_message, "content", str(last_message))
+        # Try to parse as JSON, fall back to string if not valid JSON
+        import json
+        try:
+            return json.loads(content)
+        except (json.JSONDecodeError, TypeError):
+            return [content] if content else []
+    return []
