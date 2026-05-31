@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from typing import TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage
 import operator
-from app.agent.tools import fetch_active_campaigns, fetch_dummy_news
+from app.agent.tools import fetch_active_campaigns, fetch_news
 from app.core.config import settings
 
 
@@ -20,7 +20,7 @@ llm = ChatOllama(
     base_url=settings.OLLAMA_BASE_URL,
     temperature=0.7,
 )
-llm_with_tools = llm.bind_tools([fetch_active_campaigns, fetch_dummy_news])
+llm_with_tools = llm.bind_tools([fetch_active_campaigns, fetch_news])
 
 
 def agent_node(state: AgentState):
@@ -42,8 +42,8 @@ def tools_node(state: AgentState):
 
         if tool_name == "fetch_active_campaigns":
             result = fetch_active_campaigns.invoke(tool_args)
-        elif tool_name == "fetch_dummy_news":
-            result = fetch_dummy_news.invoke(tool_args)
+        elif tool_name == "fetch_news":
+            result = fetch_news.invoke(tool_args)
         else:
             result = "Unknown tool"
 
@@ -79,7 +79,7 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
     """Invoke the agent to generate notification suggestions for a given topic."""
     initial_message = HumanMessage(
         content=f"Generate 3-5 engaging notification suggestions for the topic: {topic}. "
-        "Use fetch_active_campaigns to get campaign details and fetch_dummy_news for context. "
+        "Use fetch_active_campaigns to get campaign details and fetch_news for context. "
         "Each notification should be short, catchy, and aligned with the campaign's brand voice and target audience."
     )
     state = {

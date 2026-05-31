@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
 
+    # NewsAPI
+    NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "")
+    NEWSAPI_BASE_URL: str = os.getenv("NEWSAPI_BASE_URL", "https://newsapi.org/v2/top-headlines")
+
     # CORS
 
     BACKEND_CORS_ORIGINS: list[str] = ["*"]

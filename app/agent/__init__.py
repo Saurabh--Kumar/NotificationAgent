@@ -1,9 +1,9 @@
 from app.agent.agent import notification_agent, generate_notifications
-from app.agent.tools import fetch_active_campaigns, fetch_dummy_news
+from app.agent.tools import fetch_active_campaigns, fetch_news
 
 __all__ = [
     "notification_agent",
     "generate_notifications",
     "fetch_active_campaigns",
-    "fetch_dummy_news",
+    "fetch_news",
 ]
