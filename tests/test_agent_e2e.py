@@ -19,7 +19,7 @@ def test_ollama_llm_generates_notifications():
         # Create a notification session in the DB
         # Using actual campaign from the database (Q2 Product Launch Campaign)
         session_data = SessionCreate(
-            topic="product launch",
+            topic="sports",
             campaign_id=uuid.UUID("3be6176f-894a-4c0b-87d1-83b9393fe8cb"),
             company_id=uuid.UUID("a639cab1-240b-4d66-b084-751009a88255"),
             admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),

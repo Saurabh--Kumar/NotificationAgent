@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -21,6 +22,7 @@ def fetch_active_campaigns(company_id: Optional[str] = None) -> str:
         company_uuid = UUID(company_id) if company_id else None
         campaigns = get_active_campaigns(db, company_uuid)
         if not campaigns:
+            logging.info(f"module=app.agent.tools method=fetch_active_campaigns message=No active campaigns found for company_id: {company_id}")
             return json.dumps({"campaigns": [], "error": None})
         campaign_list = [
             {
@@ -36,9 +38,11 @@ def fetch_active_campaigns(company_id: Optional[str] = None) -> str:
             }
             for c in campaigns
         ]
+        logging.info(f"module=app.agent.tools method=fetch_active_campaigns message=Fetched {len(campaign_list)} active campaigns for company_id: {company_id}")
         return json.dumps({"campaigns": campaign_list, "error": None})
     except Exception as e:
         # Return dummy campaigns for testing when DB is not available
+        logging.warning(f"module=app.agent.tools method=fetch_active_campaigns message=Error fetching campaigns, using dummy data: {str(e)}")
         dummy_campaigns = [
             {
                 "id": "11111111-1111-1111-1111-111111111111",
@@ -86,6 +90,8 @@ def fetch_news(news_category: Optional[str] = None) -> str:
     if news_category not in valid_categories:
         news_category = "sports"
     
+    logging.info(f"module=app.agent.tools method=fetch_news message=Fetching news for category: {news_category}")
+    
     try:
         url = f"https://news.knowivate.com/api/{news_category}"
         
@@ -97,10 +103,13 @@ def fetch_news(news_category: Optional[str] = None) -> str:
         data = response.json()
         
         if not data.get("success"):
-            return json.dumps({"articles": [], "error": f"API error: {data.get('message', 'Unknown error')}"})
+            error_msg = f"API error: {data.get('message', 'Unknown error')}"
+            logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+            return json.dumps({"articles": [], "error": error_msg})
         
         news_items = data.get("news", [])
         if not news_items:
+            logging.info(f"module=app.agent.tools method=fetch_news message=No news articles found for category: {news_category}")
             return json.dumps({"articles": [], "error": "No news articles found"})
         
         # Return simplified article data
@@ -114,12 +123,21 @@ def fetch_news(news_category: Optional[str] = None) -> str:
             }
             for item in news_items[:5]  # Limit to 5 articles
         ]
+        logging.info(f"module=app.agent.tools method=fetch_news message=Fetched {len(news_list)} articles for category: {news_category}")
         return json.dumps({"articles": news_list, "error": None})
     except httpx.RequestError as e:
-        return json.dumps({"articles": [], "error": f"Network error fetching news: {str(e)}"})
+        error_msg = f"Network error fetching news: {str(e)}"
+        logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+        return json.dumps({"articles": [], "error": error_msg})
     except httpx.HTTPStatusError as e:
-        return json.dumps({"articles": [], "error": f"API returned error status {e.response.status_code}"})
+        error_msg = f"API returned error status {e.response.status_code}"
+        logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+        return json.dumps({"articles": [], "error": error_msg})
     except (ValueError, json.JSONDecodeError) as e:
-        return json.dumps({"articles": [], "error": f"Failed to parse news response: {str(e)}"})
+        error_msg = f"Failed to parse news response: {str(e)}"
+        logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+        return json.dumps({"articles": [], "error": error_msg})
     except Exception as e:
-        return json.dumps({"articles": [], "error": f"Unexpected error: {str(e)}"})
+        error_msg = f"Unexpected error: {str(e)}"
+        logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+        return json.dumps({"articles": [], "error": error_msg})

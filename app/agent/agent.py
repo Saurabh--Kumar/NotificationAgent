@@ -1,3 +1,4 @@
+import logging
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -47,8 +48,10 @@ def tools_node(state: AgentState):
             if company_id and "company_id" not in tool_args:
                 tool_args = {**tool_args, "company_id": company_id}
             result = fetch_active_campaigns.invoke(tool_args)
+            logging.info(f"module=app.agent.agent method=tools_node message=Invoked fetch_active_campaigns for company_id: {company_id}")
         elif tool_name == "fetch_news":
             result = fetch_news.invoke(tool_args)
+            logging.info(f"module=app.agent.agent method=tools_node message=Invoked fetch_news with args: {tool_args}")
         else:
             result = "Unknown tool"
 
@@ -86,6 +89,8 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
     Returns:
         List of pairs [notification_text, news_headline] for each suggestion.
     """
+    logging.info(f"module=app.agent.agent method=generate_notifications message=Starting notification generation for topic: {topic}")
+    
     initial_message = HumanMessage(
         content=NOTIFICATION_GENERATION_PROMPT.format(notification_topic=topic, company_id=company_id)
     )
@@ -113,8 +118,10 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
                     elif isinstance(item, str):
                         # Legacy format: just text, no headline
                         validated.append([item, ""])
+                logging.info(f"module=app.agent.agent method=generate_notifications message=Generated {len(validated)} suggestions")
                 return validated
             return []
         except (json.JSONDecodeError, TypeError):
+            logging.info(f"module=app.agent.agent method=generate_notifications message=Generated 1 suggestion (fallback format)")
             return [[content, ""]] if content else []
     return []

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -25,6 +26,9 @@ def create_campaign(db: Session, campaign_in: CampaignCreate) -> Campaign:
     db.add(db_campaign)
     db.commit()
     db.refresh(db_campaign)
+    
+    logging.info(f"module=app.crud.campaign method=create_campaign message=Created campaign {db_campaign.id} for company {campaign_in.company_id}")
+    
     return db_campaign
 
 
@@ -55,7 +59,9 @@ def get_active_campaigns(
     query = db.query(Campaign).filter(Campaign.status == CampaignStatus.ACTIVE)
     if company_id:
         query = query.filter(Campaign.company_id == company_id)
-    return query.all()
+    campaigns = query.all()
+    logging.info(f"module=app.crud.campaign method=get_active_campaigns message=Fetched {len(campaigns)} active campaigns for company_id: {company_id}")
+    return campaigns
 
 
 def update_campaign(
@@ -66,4 +72,7 @@ def update_campaign(
         setattr(db_campaign, field, update_data[field])
     db.commit()
     db.refresh(db_campaign)
+    
+    logging.info(f"module=app.crud.campaign method=update_campaign message=Updated campaign {db_campaign.id}")
+    
     return db_campaign

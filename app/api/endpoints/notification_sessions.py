@@ -38,16 +38,19 @@ async def create_notification_session(
     """
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
     
+    logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Created session {db_session.id}")
+    
     if settings.ENABLE_ASYNC_TASKS:
         run_agent_task.delay(str(db_session.id))
+        logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Dispatched async task for session {db_session.id}")
     else:
         run_agent_task(str(db_session.id))
+        logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Executed sync task for session {db_session.id}")
     
     return {
         "session_id": db_session.id,
         "status": db_session.status.value
     }
-
 
 
 @router.get(
@@ -75,6 +78,7 @@ async def get_notification_session(
     try:
         company_uuid = UUID(company_id)
     except (ValueError, AttributeError):
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=get_notification_session message=Invalid company_id format: {company_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid company_id format"
@@ -87,10 +91,13 @@ async def get_notification_session(
     )
     
     if not db_session:
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=get_notification_session message=Session {session_id} not found for company {company_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
         )
+    
+    logging.info(f"module=app.api.endpoints.notification_sessions method=get_notification_session message=Retrieved session {session_id}")
     
     return db_session
 
@@ -110,6 +117,7 @@ async def add_feedback(
     try:
         company_uuid = UUID(company_id)
     except (ValueError, AttributeError):
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=add_feedback message=Invalid company_id format: {company_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid company_id format"
@@ -118,6 +126,7 @@ async def add_feedback(
         db, session_id=session_id, company_id=company_uuid
     )
     if not db_session:
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=add_feedback message=Session {session_id} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
@@ -130,6 +139,9 @@ async def add_feedback(
     db_session.status = NotificationSessionStatus.AWAITING_REVIEW
     db.commit()
     db.refresh(db_session)
+    
+    logging.info(f"module=app.api.endpoints.notification_sessions method=add_feedback message=Added feedback to session {session_id}")
+    
     return db_session
 
 
@@ -148,6 +160,7 @@ async def publish_notifications(
     try:
         company_uuid = UUID(company_id)
     except (ValueError, AttributeError):
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Invalid company_id format: {company_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid company_id format"
@@ -156,6 +169,7 @@ async def publish_notifications(
         db, session_id=session_id, company_id=company_uuid
     )
     if not db_session:
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Session {session_id} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
@@ -163,6 +177,7 @@ async def publish_notifications(
     # Filter selected suggestions
     selected = [s for s in db_session.all_suggestions if s["id"] in publish_req.selected_suggestion_ids]
     if not selected:
+        logging.warning(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=No valid suggestions selected for session {session_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No valid suggestions selected"
@@ -170,9 +185,12 @@ async def publish_notifications(
     # Dummy publish (log to console) - include news headline in log
     for s in selected:
         news_headline = s.get("news_headline", "")
-        logging.info(f"Published notification: {s['text']} (inspired by: {news_headline})")
+        logging.info(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Published notification: {s['text']} (inspired by: {news_headline})")
     db_session.selected_suggestions = selected
     db_session.status = NotificationSessionStatus.COMPLETED
     db.commit()
     db.refresh(db_session)
+    
+    logging.info(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Published {len(selected)} notifications for session {session_id}")
+    
     return db_session

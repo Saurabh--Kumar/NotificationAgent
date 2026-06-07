@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -31,6 +32,8 @@ def create_notification_session(
     db.commit()
     db.refresh(db_session)
     
+    logging.info(f"module=app.crud.session method=create_notification_session message=Created session {db_session.id} for company {session_in.company_id}")
+    
     return db_session
 
 
@@ -57,4 +60,7 @@ def update_session_status(
     db_session.status = status
     db.commit()
     db.refresh(db_session)
+    
+    logging.info(f"module=app.crud.session method=update_session_status message=Updated session {db_session.id} status to {status.value}")
+    
     return db_session

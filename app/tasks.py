@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 import uuid
 from uuid import UUID
@@ -7,7 +8,6 @@ from app.celery_app import celery_app
 from app.db.session import SessionLocal
 from app.crud import session as crud_session
 from app.models.enums import NotificationSessionStatus
-
 
 
 @celery_app.task(name="app.tasks.run_agent_task")
@@ -21,6 +21,7 @@ def run_agent_task(session_id: str) -> dict:
         db_session = crud_session.get_notification_session(db, session_id=session_uuid)
         
         if not db_session:
+            logging.info(f"module=app.tasks method=run_agent_task message=Session {session_id} not found")
             return {
                 "status": "error",
                 "message": f"Session {session_id} not found"
@@ -31,9 +32,13 @@ def run_agent_task(session_id: str) -> dict:
 
         topic = db_session.topic or "general notifications"
         company_id = str(db_session.company_id) if db_session.company_id else None
+        
+        logging.info(f"module=app.tasks method=run_agent_task message=Generating notifications for topic: {topic}")
 
         try:
             suggestions = generate_notifications(topic=topic, company_id=company_id)
+            
+            logging.info(f"module=app.tasks method=run_agent_task message=Generated {len(suggestions)} suggestions")
             
             # Convert list of pairs [text, headline] to list of suggestion objects
             suggestions_list = [
@@ -63,6 +68,8 @@ def run_agent_task(session_id: str) -> dict:
                 db_session=db_session,
                 status=NotificationSessionStatus.AWAITING_REVIEW
             )
+            
+            logging.info(f"module=app.tasks method=run_agent_task message=Session {session_id} status updated to AWAITING_REVIEW")
 
         except Exception as agent_error:
             # Update status to FAILED if agent execution fails
@@ -71,6 +78,7 @@ def run_agent_task(session_id: str) -> dict:
                 db_session=db_session,
                 status=NotificationSessionStatus.FAILED
             )
+            logging.error(f"module=app.tasks method=run_agent_task message=Agent error: {str(agent_error)}")
             raise agent_error
         
         return {
@@ -86,6 +94,8 @@ def run_agent_task(session_id: str) -> dict:
                 db_session=db_session,
                 status=NotificationSessionStatus.FAILED
             )
+        
+        logging.error(f"module=app.tasks method=run_agent_task message=Task error: {str(e)}")
         
         return {
             "status": "error",
