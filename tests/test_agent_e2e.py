@@ -10,16 +10,18 @@ from app.db.session import SessionLocal
 from app.schemas.session import SessionCreate
 
 
-def test_ollama_llm_generates_notifications(db):
+def test_ollama_llm_generates_notifications():
     """Test that the agent can generate notifications using Ollama via run_agent_task."""
     # This test requires Ollama to be running with gemma4:e2b model
+    # Uses PostgreSQL database directly (not the in-memory SQLite from conftest)
+    db = SessionLocal()
     try:
         # Create a notification session in the DB
-        # The topic should come from the campaign, not be hardcoded
+        # Using actual campaign from the database (Q2 Product Launch Campaign)
         session_data = SessionCreate(
             topic="product launch",
-            campaign_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            company_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            campaign_id=uuid.UUID("3be6176f-894a-4c0b-87d1-83b9393fe8cb"),
+            company_id=uuid.UUID("a639cab1-240b-4d66-b084-751009a88255"),
             admin_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
         )
         test_session = crud_session.create_notification_session(db=db, session_in=session_data)
