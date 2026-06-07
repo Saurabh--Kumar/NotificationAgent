@@ -41,6 +41,13 @@ def test_ollama_llm_generates_notifications():
         assert test_session.all_suggestions is not None
         assert len(test_session.all_suggestions) > 0, "Expected at least one notification suggestion"
         
+        # Verify each suggestion has the required fields including news_headline
+        for suggestion in test_session.all_suggestions:
+            assert "id" in suggestion, "Suggestion missing 'id' field"
+            assert "text" in suggestion, "Suggestion missing 'text' field"
+            assert "news_headline" in suggestion, "Suggestion missing 'news_headline' field"
+            assert "status" in suggestion, "Suggestion missing 'status' field"
+        
         # Verify conversation history was updated
         assert test_session.conversation_history is not None
         assert len(test_session.conversation_history) > 0

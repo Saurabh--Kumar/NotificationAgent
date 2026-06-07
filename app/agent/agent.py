@@ -81,7 +81,11 @@ notification_agent = workflow.compile()
 
 
 def generate_notifications(topic: str, company_id: str | None = None) -> list:
-    """Invoke the agent to generate notification suggestions for a given topic."""
+    """Invoke the agent to generate notification suggestions for a given topic.
+    
+    Returns:
+        List of pairs [notification_text, news_headline] for each suggestion.
+    """
     initial_message = HumanMessage(
         content=NOTIFICATION_GENERATION_PROMPT.format(notification_topic=topic, company_id=company_id)
     )
@@ -99,7 +103,18 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
         # Try to parse as JSON, fall back to string if not valid JSON
         import json
         try:
-            return json.loads(content)
+            parsed = json.loads(content)
+            # Validate that we have pairs [text, headline]
+            if isinstance(parsed, list):
+                validated = []
+                for item in parsed:
+                    if isinstance(item, list) and len(item) == 2:
+                        validated.append([str(item[0]), str(item[1])])
+                    elif isinstance(item, str):
+                        # Legacy format: just text, no headline
+                        validated.append([item, ""])
+                return validated
+            return []
         except (json.JSONDecodeError, TypeError):
-            return [content] if content else []
+            return [[content, ""]] if content else []
     return []

@@ -35,14 +35,15 @@ def run_agent_task(session_id: str) -> dict:
         try:
             suggestions = generate_notifications(topic=topic, company_id=company_id)
             
-            # Convert list of strings to list of suggestion objects
+            # Convert list of pairs [text, headline] to list of suggestion objects
             suggestions_list = [
                 {
                     "id": str(uuid.uuid4()),
-                    "text": text,
+                    "text": pair[0] if isinstance(pair, list) and len(pair) >= 1 else str(pair),
+                    "news_headline": pair[1] if isinstance(pair, list) and len(pair) >= 2 else "",
                     "status": "pending"
                 }
-                for text in suggestions
+                for pair in suggestions
             ]
             
             # Add to conversation history

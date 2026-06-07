@@ -50,8 +50,6 @@ async def create_notification_session(
 
 
 
-
-
 @router.get(
     "/notification-sessions/{session_id}",
     response_model=Session,
@@ -169,12 +167,12 @@ async def publish_notifications(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No valid suggestions selected"
         )
-    # Dummy publish (log to console)
+    # Dummy publish (log to console) - include news headline in log
     for s in selected:
-        logging.info(f"Published notification: {s['text']}")
+        news_headline = s.get("news_headline", "")
+        logging.info(f"Published notification: {s['text']} (inspired by: {news_headline})")
     db_session.selected_suggestions = selected
     db_session.status = NotificationSessionStatus.COMPLETED
     db.commit()
     db.refresh(db_session)
     return db_session
-
