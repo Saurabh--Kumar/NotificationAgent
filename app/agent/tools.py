@@ -42,21 +42,8 @@ def fetch_active_campaigns(company_id: Optional[str] = None) -> str:
         return json.dumps({"campaigns": campaign_list, "error": None})
     except Exception as e:
         # Return dummy campaigns for testing when DB is not available
-        logging.warning(f"module=app.agent.tools method=fetch_active_campaigns message=Error fetching campaigns, using dummy data: {str(e)}")
-        dummy_campaigns = [
-            {
-                "id": "11111111-1111-1111-1111-111111111111",
-                "company_id": "11111111-1111-1111-1111-111111111111",
-                "company_name": "Myntra",
-                "name": "Summer Sale Campaign",
-                "theme": "End of Reason Sale. Upto 90% off on latest fashion.",
-                "category": "promotional",
-                "brand_voice": "trendy",
-                "target_audience": "young adults",
-                "industry": "fashion",
-            }
-        ]
-        return json.dumps({"campaigns": dummy_campaigns, "error": None})
+        logging.error(f"module=app.agent.tools method=fetch_active_campaigns message=Error fetching campaigns: {str(e)}")
+        return json.dumps({"campaigns": [], "error": f"Failed to fetch campaigns: {str(e)}"})
     finally:
         db.close()
 

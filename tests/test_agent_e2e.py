@@ -27,18 +27,18 @@ def test_ollama_llm_generates_notifications():
         test_session = crud_session.create_notification_session(db=db, session_in=session_data)
         db.commit()
         
-        # Call the task (synchronously, not via Celery)
+        # Call the task (synchronously, not via Celery)e2e
         result = run_agent_task(str(test_session.id))
         
         # Verify the result
-        assert result is not None
-        assert result.get("status") == "success"
+        assert result is not None, "run_agent_task returned None"
+        assert result.get("status") == "success", f"Task failed: {result.get('message')}"
         
         # Refresh the session from DB
         db.refresh(test_session)
         
         # Verify suggestions were generated
-        assert test_session.all_suggestions is not None
+        assert test_session.all_suggestions is not None, "all_suggestions is None"
         assert len(test_session.all_suggestions) > 0, "Expected at least one notification suggestion"
         
         # Verify each suggestion has the required fields including news_headline
@@ -58,7 +58,7 @@ def test_ollama_llm_generates_notifications():
         print(f"Generated suggestions: {test_session.all_suggestions}...")
         
     except Exception as e:
-        pytest.skip(f"Ollama not available or model not loaded: {e}")
+        pytest.fail(f"Test failed with exception: {e}")
     finally:
         db.close()
 
