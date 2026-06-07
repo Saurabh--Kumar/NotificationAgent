@@ -83,7 +83,7 @@ notification_agent = workflow.compile()
 def generate_notifications(topic: str, company_id: str | None = None) -> list:
     """Invoke the agent to generate notification suggestions for a given topic."""
     initial_message = HumanMessage(
-        content=NOTIFICATION_GENERATION_PROMPT.format(topic=topic, company_id=company_id)
+        content=NOTIFICATION_GENERATION_PROMPT.format(notification_topic=topic, company_id=company_id)
     )
     state = {
         "messages": [initial_message],

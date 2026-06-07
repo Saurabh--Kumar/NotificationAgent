@@ -58,48 +58,67 @@ def fetch_active_campaigns(company_id: Optional[str] = None) -> str:
 
 
 @tool
-def fetch_news(topic: Optional[str] = None) -> str:
-    """Fetch real news articles from NewsAPI. Returns a list of news articles with title, description, and content."""
-    from app.core.config import settings
-
+def fetch_news(news_category: Optional[str] = None) -> str:
+    """Fetch news articles from Knowivate API (Indian news source) for context.
+    
+    Use this tool to get current news that can inspire or provide context for notification suggestions.
+    This is different from the notification topic - this is the news category to fetch.
+    
+    Args:
+        news_category: Optional news category. Valid values: agriculture, sports, business, technologies, latest.
+               If not provided or invalid, defaults to "sports".
+    
+    Returns:
+        JSON string with "articles" list and "error" field.
+        Each article has: title, description, content, source, url.
+    
+    Example usage:
+        fetch_news() -> gets sports news (default)
+        fetch_news("business") -> gets business news
+        fetch_news("technologies") -> gets tech news
+    """
+    # Default to sports if no news_category provided
+    if not news_category:
+        news_category = "sports"
+    
+    # Validate news_category
+    valid_categories = ["agriculture", "sports", "business", "technologies", "latest"]
+    if news_category not in valid_categories:
+        news_category = "sports"
+    
     try:
-        params = {
-            "country": "us",
-            "category": "business",
-            "apiKey": settings.NEWSAPI_KEY,
-        }
+        url = f"https://news.knowivate.com/api/{news_category}"
         
         response = httpx.get(
-            settings.NEWSAPI_BASE_URL, 
-            params=params, 
+            url, 
             timeout=Timeout(10.0)
         )
         response.raise_for_status()
         data = response.json()
         
-        if data.get("status") != "ok":
-            return json.dumps({"articles": [], "error": f"NewsAPI error: {data.get('message', 'Unknown error')}"})
+        if not data.get("success"):
+            return json.dumps({"articles": [], "error": f"API error: {data.get('message', 'Unknown error')}"})
         
-        articles = data.get("articles", [])
-        if not articles:
+        news_items = data.get("news", [])
+        if not news_items:
             return json.dumps({"articles": [], "error": "No news articles found"})
         
         # Return simplified article data
         news_list = [
             {
-                "title": a.get("title", ""),
-                "description": a.get("description", ""),
-                "content": a.get("content", ""),
-                "source": a.get("source", {}).get("name", ""),
-                "url": a.get("url", ""),
+                "title": item.get("title", ""),
+                "description": item.get("description", ""),
+                "content": item.get("description", ""),  # Use description as content
+                "source": item.get("source", {}).get("name", ""),
+                "url": item.get("url", ""),
             }
-            for a in articles[:5]  # Limit to 5 articles
+            for item in news_items[:5]  # Limit to 5 articles
         ]
         return json.dumps({"articles": news_list, "error": None})
     except httpx.RequestError as e:
         return json.dumps({"articles": [], "error": f"Network error fetching news: {str(e)}"})
     except httpx.HTTPStatusError as e:
-        return json.dumps({"articles": [], "error": f"NewsAPI returned error status {e.response.status_code}"})
+        return json.dumps({"articles": [], "error": f"API returned error status {e.response.status_code}"})
     except (ValueError, json.JSONDecodeError) as e:
         return json.dumps({"articles": [], "error": f"Failed to parse news response: {str(e)}"})
     except Exception as e:

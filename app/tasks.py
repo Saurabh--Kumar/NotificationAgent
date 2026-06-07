@@ -14,6 +14,7 @@ from app.models.enums import NotificationSessionStatus
 
 def run_agent_task(session_id: str) -> dict:
     db: DBSession = SessionLocal()
+    db_session = None
     
     try:
         session_uuid = UUID(session_id)
