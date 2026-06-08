@@ -19,7 +19,8 @@ This project implements a backend service that allows B2C enterprise customers t
 
 - Python 3.9+
 - PostgreSQL 13+
-- Redis 6.0+
+- (Optional) Redis 6.0+
+- Ollama (for local LLM inference)
 - (Optional) Docker and Docker Compose
 
 ## Getting Started
@@ -48,23 +49,34 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/notification_agent
+POSTGRES_SERVER=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-password
+POSTGRES_DB=notification_agent
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_HOST=localhost
+REDIS_PORT=6379
+ENABLE_ASYNC_TASKS=false
 
 # Security
 SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# LLM (update with your provider's API key)
-OPENAI_API_KEY=your-openai-api-key
+# Ollama (local LLM)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma4:e2b
+
 ```
 
 ### 4. Initialize the database
 
+Ensure PostgreSQL is running and the database exists, then run migrations:
+
 ```bash
+# Create database if needed
+psql -U postgres -c "CREATE DATABASE notification_agent;"
+
 # Run database migrations
 alembic upgrade head
 ```
@@ -75,14 +87,82 @@ alembic upgrade head
 # Start Redis (in a separate terminal)
 redis-server
 
-# Start Celery worker (in a separate terminal)
-celery -A app.tasks worker --loglevel=info
+# Start Ollama (in a separate terminal)
+ollama serve
 
 # Start the FastAPI application
-uvicorn app.main:app --reload
+. .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000`. Access the interactive API documentation at `http://localhost:8000/docs`.
+
+## API Usage
+
+### Create notification session (async)
+
+Returns immediately with a session ID. The agent processes notifications in the background.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/notification-sessions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "sports",
+    "campaign_id": "3be6176f-894a-4c0b-87d1-83b9393fe8cb",
+    "company_id": "a639cab1-240b-4d66-b084-751009a88255",
+    "admin_id": "22222222-2222-2222-2222-222222222222"
+  }'
+```
+
+Response:
+```json
+{
+  "session_id": "feb6e46d-3808-4a7d-876b-2a4d4130543f",
+  "status": "PROCESSING"
+}
+```
+
+### Create notification session (sync)
+
+Creates a session and blocks until notifications are generated. Returns the full session with suggestions.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/notification-sessions/sync" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "sports",
+    "campaign_id": "3be6176f-894a-4c0b-87d1-83b9393fe8cb",
+    "company_id": "a639cab1-240b-4d66-b084-751009a88255",
+    "admin_id": "22222222-2222-2222-2222-222222222222"
+  }'
+```
+
+Response includes:
+- `all_suggestions`: list of generated notifications, each with `id`, `text`, `news_headline`, and `status`
+- `conversation_history`: full conversation with the agent
+- `status`: updated to `AWAITING_REVIEW` when complete
+
+### Get notification session
+
+```bash
+curl "http://localhost:8000/api/v1/notification-sessions/{session_id}?company_id={company_id}"
+```
+
+### Add feedback to a session
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/feedback?company_id={company_id}" \
+  -H "Content-Type: application/json" \
+  -d '{"feedback": "Make the tone more urgent"}'
+```
+
+### Publish selected notifications
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/publish?company_id={company_id}" \
+  -H "Content-Type: application/json" \
+  -d '{"selected_suggestion_ids": ["suggestion-id-1", "suggestion-id-2"]}'
+```
 
 ## Project Structure
 
@@ -90,6 +170,7 @@ The API will be available at `http://localhost:8000`. Access the interactive API
 .
 ├── app/                      # Application package
 │   ├── api/                  # API endpoints
+│   │   └── endpoints/        # Route handlers
 │   ├── core/                 # Core configuration and utilities
 │   ├── db/                   # Database configuration
 │   ├── models/               # Database models
@@ -139,10 +220,3 @@ API documentation is available at:
 - Interactive API docs: `http://localhost:8000/docs`
 - Alternative API docs: `http://localhost:8000/redoc`
 
-## License
-
-[Your License Here]
-
-## Contributing
-
-[Your contribution guidelines here]

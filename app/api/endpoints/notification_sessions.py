@@ -53,6 +53,51 @@ async def create_notification_session(
     }
 
 
+@router.post(
+    "/notification-sessions/sync",
+    response_model=Session,
+    status_code=status.HTTP_200_OK,
+    summary="Create notification session synchronously and return results",
+    response_description="Notification session with generated suggestions"
+)
+async def create_notification_session_sync(
+    session_data: SessionCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Initiate a new notification generation session synchronously.
+    
+    This endpoint creates a new session and generates notifications immediately,
+    returning the full session with suggestions in the response.
+    
+    Args:
+        session_data: Session creation data including topic, campaign_id, company_id, and admin_id
+        db: Database session
+        
+    Returns:
+        Full Session with generated suggestions and conversation history
+    """
+    db_session = crud_session.create_notification_session(db=db, session_in=session_data)
+    
+    logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session_sync message=Created session {db_session.id}")
+    
+    # Execute synchronously
+    result = run_agent_task(str(db_session.id))
+    
+    if result.get("status") != "success":
+        logging.error(f"module=app.api.endpoints.notification_sessions method=create_notification_session_sync message=Task failed: {result.get('message')}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("message", "Failed to generate notifications")
+        )
+    
+    db.refresh(db_session)
+    
+    logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session_sync message=Completed sync task for session {db_session.id}")
+    
+    return db_session
+
+
 @router.get(
     "/notification-sessions/{session_id}",
     response_model=Session,
