@@ -9,17 +9,20 @@ This project implements a backend service that allows B2C enterprise customers t
 ## Features
 
 - Multi-tenant architecture with data isolation
-- Asynchronous task processing with Celery and Redis
+- Asynchronous task processing using a background thread pool
 - RESTful API built with FastAPI
 - Integration with LLM for intelligent notification generation
 - Human-in-the-loop workflow for approval
 - Database persistence with PostgreSQL
 
+## Architecture Note
+
+The application uses a background thread pool for asynchronous task processing. Each worker process maintains its own pool of 5 threads. When running multiple Uvicorn/Gunicorn workers, total concurrency scales accordingly (for example, 2 workers × 5 threads = 10 concurrent background tasks).
+
 ## Prerequisites
 
 - Python 3.9+
 - PostgreSQL 13+
-- (Optional) Redis 6.0+
 - Ollama (for local LLM inference)
 - (Optional) Docker and Docker Compose
 
@@ -55,11 +58,6 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-password
 POSTGRES_DB=notification_agent
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-ENABLE_ASYNC_TASKS=false
-
 # Security
 SECRET_KEY=your-secret-key-here
 
@@ -84,9 +82,6 @@ alembic upgrade head
 ### 5. Start the services
 
 ```bash
-# Start Redis (in a separate terminal)
-redis-server
-
 # Start Ollama (in a separate terminal)
 ollama serve
 

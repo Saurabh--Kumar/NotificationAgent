@@ -23,18 +23,15 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
-    # Celery / Redis
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT: str = os.getenv("REDIS_PORT", "6379")
-    ENABLE_ASYNC_TASKS: bool = os.getenv("ENABLE_ASYNC_TASKS", "false").lower() == "true"
-    
-    @property
-    def CELERY_BROKER_URL(self) -> str:
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
-    
-    @property
-    def CELERY_RESULT_BACKEND(self) -> str:
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+    # Background thread pool
+    # (Redis/Celery removed; async work is handled by app.thread_pool)
+
+    # Deprecated: legacy env vars kept for backward compatibility during migration.
+    # These are ignored by the application but accepted to avoid breaking
+    # existing deployments that still set them.
+    REDIS_HOST: str = ""
+    REDIS_PORT: str = ""
+    ENABLE_ASYNC_TASKS: bool = False
 
     # Ollama (local LLM)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")

@@ -6,8 +6,9 @@ from app.crud import session as crud_session
 from app.schemas.session import SessionCreate, SessionResponse, Session, FeedbackRequest, PublishRequest
 from app.api.dependencies import get_db
 from app.tasks import run_agent_task
-from app.core.config import settings
+from app.thread_pool import submit_task
 from app.models.enums import NotificationSessionStatus
+
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ async def create_notification_session(
     Initiate a new notification generation session.
     
     This endpoint creates a new session for generating notifications based on the provided topic.
-    The session will be processed asynchronously if ENABLE_ASYNC_TASKS is true, otherwise synchronously.
+    The session is processed asynchronously using a background thread pool.
     
     Args:
         session_data: Session creation data including topic, campaign_id, company_id, and admin_id
@@ -37,16 +38,22 @@ async def create_notification_session(
         SessionResponse with session_id and status
     """
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
-    
+
     logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Created session {db_session.id}")
-    
-    if settings.ENABLE_ASYNC_TASKS:
-        run_agent_task.delay(str(db_session.id))
-        logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Dispatched async task for session {db_session.id}")
-    else:
-        run_agent_task(str(db_session.id))
-        logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Executed sync task for session {db_session.id}")
-    
+
+    try:
+        submit_task(run_agent_task, str(db_session.id))
+    except RuntimeError as exc:
+        logging.error(
+            f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Worker pool saturated for session {db_session.id}: {str(exc)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Background worker pool is saturated. Please retry later.",
+        )
+
+    logging.info(f"module=app.api.endpoints.notification_sessions method=create_notification_session message=Dispatched background task for session {db_session.id}")
+
     return {
         "session_id": db_session.id,
         "status": db_session.status.value

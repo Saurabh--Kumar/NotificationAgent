@@ -30,7 +30,7 @@ The system is designed around a decoupled, service-oriented architecture.
                             |           | (Results)              | (Tools)
                             v           |                        v
 +---------------------------+-----------+------------------------+-----------+
-|   Asynchronous Task Queue (Celery & Redis)                     |           |
+|   Background Thread Pool (5 workers)                           |           |
 +----------------------------------------------------------------+           |
 |                           |                                    |           |
 |                           v                                    v           v
@@ -45,7 +45,7 @@ The system is designed around a decoupled, service-oriented architecture.
 
   * **Admin UI:** A web-based front end where the business admin interacts with the system. It initiates requests, displays suggestions, captures feedback, and triggers the final publish action.
   * **FastAPI Backend:** The central nervous system of the application. It exposes REST APIs, manages user authentication, handles session state, orchestrates asynchronous tasks, and interacts with the database. **It does not contain the core LLM logic.**
-  * **Asynchronous Task Queue (Celery & Redis):** Used to offload the time-consuming process of running the LangGraph agent. This prevents API requests from timing out and allows the system to handle a high volume of concurrent requests. Redis serves as the message broker.
+  * **Background Thread Pool:** A pool of 5 worker threads used to offload the time-consuming process of running the LangGraph agent. This prevents API requests from timing out and allows the system to handle a moderate volume of concurrent requests without external dependencies like Redis.
   * **LangGraph Agent:** A stateless service responsible for the "thinking." It takes a snapshot of the current state (chat history, company data, news articles) and generates notification suggestions. Its only job is to process information and return a result.
   * **Database (PostgreSQL):** Persists all long-term data, including session information, conversation history, **company profiles, and campaign details.**
   * **Third-Party Services:**
@@ -217,7 +217,7 @@ The graph orchestrates the agent's reasoning process.
        (END)
 ```
 
-1.  **START:** The agent is invoked with the `AgentState` populated from the database by the Celery worker.
+1.  **START:** The agent is invoked with the `AgentState` populated from the database by the background thread pool worker.
 2.  **Analyze Request (Router):** An LLM call examines the *last message* in `conversation_history`.
       * If it's the first turn or requests a new topic (e.g., "now give me some about movies"), it routes to the `Gather Info` node.
       * If it's a refinement request (e.g., "make it funnier"), it bypasses information gathering and routes directly to the `Generate Suggestions` node.
@@ -228,7 +228,7 @@ The graph orchestrates the agent's reasoning process.
       * The list of `active_campaigns` (for context).
       * The fetched `news_articles`.
       * A directive to generate 5 catchy notification messages.
-5.  **END:** The final state, with the `generated_suggestions` field populated, is returned by the agent function. The Celery worker then takes this result and updates the database.
+5.  **END:** The final state, with the `generated_suggestions` field populated, is returned by the agent function. The background thread pool worker then takes this result and updates the database.
 
 -----
 
@@ -269,18 +269,35 @@ CREATE INDEX idx_active_campaigns ON campaigns (company_id, start_date, end_date
 
 -----
 
-## 6\. Asynchronous Task Processing (Celery)
+## 6\. Asynchronous Task Processing (Background Thread Pool)
+
+### `thread_pool.py`
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Any
+
+# Pool of 5 background threads for notification generation
+_executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="notification_worker")
+
+
+def submit_task(fn: Callable[..., Any], *args: Any, **kwargs: Any):
+    """
+    Submit a callable to the background thread pool.
+    """
+    return _executor.submit(fn, *args, **kwargs)
+
+
+def shutdown(wait: bool = True) -> None:
+    """
+    Gracefully shut down the thread pool.
+    """
+    _executor.shutdown(wait=wait)
+```
 
 ### `tasks.py`
 
 ```python
-from celery import Celery
-from .agent import run_langgraph_agent # Your agent logic
-from .database import get_session, update_session_results, update_session_status
-
-app = Celery('tasks', broker='redis://localhost:6379/0')
-
-@app.task
 def run_agent_task(session_id: str):
     # 1. Fetch current session state from DB
     session = get_session(session_id)
@@ -315,7 +332,7 @@ def run_agent_task(session_id: str):
 
 ## 7\. Scalability and Performance
 
-  * **Horizontal Scaling:** The FastAPI backend and Celery workers are stateless and can be scaled horizontally by running more instances behind a load balancer.
+  * **Horizontal Scaling:** The FastAPI backend is stateless and can be scaled horizontally by running more instances behind a load balancer. The background thread pool is process-local; for multi-process deployments, each process maintains its own pool.
   * **Database Performance:** Proper indexing on `session_id`, `company_id`, and campaign date ranges is crucial. For extremely high-volume scenarios, consider using a database read replica.
   * **Connection Pooling:** Use connection pooling (like PgBouncer) to manage database connections efficiently from multiple API/worker instances.
   * **API Responsiveness:** The asynchronous architecture ensures the API remains fast and responsive, never blocking on long-running LLM calls.

@@ -27,7 +27,7 @@ def test_ollama_llm_generates_notifications():
         test_session = crud_session.create_notification_session(db=db, session_in=session_data)
         db.commit()
         
-        # Call the task (synchronously, not via Celery)e2e
+        # Call the task directly (synchronous execution for e2e test)
         result = run_agent_task(str(test_session.id))
         
         # Verify the result

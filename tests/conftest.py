@@ -9,10 +9,9 @@ from app.main import app
 from app.api.dependencies import get_db
 from unittest.mock import Mock, patch
 
-# Mock Celery task to avoid Redis dependency
+# Mock background thread pool submission to avoid Redis/Celery dependency
 import app.api.endpoints.notification_sessions as notification_sessions_module
-notification_sessions_module.run_agent_task = Mock()
-notification_sessions_module.run_agent_task.delay = Mock(return_value=Mock(id="test-task-id"))
+notification_sessions_module.submit_task = Mock()
 
 
 

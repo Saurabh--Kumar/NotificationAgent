@@ -4,13 +4,10 @@ import uuid
 from uuid import UUID
 from sqlalchemy.orm import Session as DBSession
 
-from app.celery_app import celery_app
 from app.db.session import SessionLocal
 from app.crud import session as crud_session
 from app.models.enums import NotificationSessionStatus
 
-
-@celery_app.task(name="app.tasks.run_agent_task")
 
 def run_agent_task(session_id: str) -> dict:
     db: DBSession = SessionLocal()

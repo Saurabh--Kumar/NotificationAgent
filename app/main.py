@@ -1,13 +1,23 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
 from app.api.endpoints.notification_sessions import router as notification_sessions_router
+from app.thread_pool import shutdown as shutdown_thread_pool
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    shutdown_thread_pool(wait=False)
+
 
 app = FastAPI(
     title="Notification Agent API",
     description="API for generating and managing notification suggestions",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
