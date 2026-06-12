@@ -107,21 +107,66 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
         content = getattr(last_message, "content", str(last_message))
         # Try to parse as JSON, fall back to string if not valid JSON
         import json
-        try:
-            parsed = json.loads(content)
-            # Validate that we have pairs [text, headline]
+        import re
+        
+        def extract_validated_suggestions(parsed):
             if isinstance(parsed, list):
                 validated = []
                 for item in parsed:
                     if isinstance(item, list) and len(item) == 2:
                         validated.append([str(item[0]), str(item[1])])
                     elif isinstance(item, str):
-                        # Legacy format: just text, no headline
                         validated.append([item, ""])
+                return validated
+            return None
+        
+        def clean_json_string(s):
+            # Remove trailing commas before ] or }
+            s = re.sub(r',\s*([\]\}])', r'\1', s)
+            # Remove markdown code block markers
+            s = re.sub(r'```(?:json)?\s*', '', s)
+            s = re.sub(r'\s*```', '', s)
+            s = re.sub(r'``(?:json)?\s*', '', s)
+            s = re.sub(r'\s*``', '', s)
+            s = re.sub(r'`(?:json)?\s*', '', s)
+            s = re.sub(r'\s*`', '', s)
+            return s.strip()
+        
+        # Strategy 1: Try to parse the entire content as JSON
+        try:
+            parsed = json.loads(content)
+            validated = extract_validated_suggestions(parsed)
+            if validated is not None:
                 logging.info(f"module=app.agent.agent method=generate_notifications message=Generated {len(validated)} suggestions")
                 return validated
-            return []
         except (json.JSONDecodeError, TypeError):
-            logging.info(f"module=app.agent.agent method=generate_notifications message=Generated 1 suggestion (fallback format)")
-            return [[content, ""]] if content else []
+            pass
+        
+        # Strategy 2: Try to find a JSON array within the text
+        start = content.find('[')
+        end = content.rfind(']')
+        if start != -1 and end != -1 and end > start:
+            try:
+                json_str = clean_json_string(content[start:end+1])
+                parsed = json.loads(json_str)
+                validated = extract_validated_suggestions(parsed)
+                if validated is not None:
+                    logging.info(f"module=app.agent.agent method=generate_notifications message=Generated {len(validated)} suggestions")
+                    return validated
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        # Strategy 3: Clean the entire content and try to parse
+        try:
+            cleaned = clean_json_string(content)
+            parsed = json.loads(cleaned)
+            validated = extract_validated_suggestions(parsed)
+            if validated is not None:
+                logging.info(f"module=app.agent.agent method=generate_notifications message=Generated {len(validated)} suggestions")
+                return validated
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        logging.info(f"module=app.agent.agent method=generate_notifications message=Generated 1 suggestion (fallback format)")
+        return [[content, ""]] if content else []
     return []
