@@ -237,7 +237,7 @@ async def publish_notifications(
     # Dummy publish (log to console) - include news headline in log
     for s in selected:
         news_headline = s.get("news_headline", "")
-        logging.info(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Published notification: {s['text']} (inspired by: {news_headline})")
+        logging.info(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Published notification: {s['notification_text']} (inspired by: {news_headline})")
     db_session.selected_suggestions = selected
     db_session.status = NotificationSessionStatus.COMPLETED
     db.commit()

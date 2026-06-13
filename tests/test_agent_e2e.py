@@ -1,4 +1,5 @@
 """End-to-end test for the LangGraph agent with Ollama."""
+import json
 import pytest
 import uuid
 from app.agent.tools import fetch_news
@@ -44,7 +45,7 @@ def test_ollama_llm_generates_notifications():
         # Verify each suggestion has the required fields including news_headline
         for suggestion in test_session.all_suggestions:
             assert "id" in suggestion, "Suggestion missing 'id' field"
-            assert "text" in suggestion, "Suggestion missing 'text' field"
+            assert "notification_text" in suggestion, "Suggestion missing 'notification_text' field"
             assert "news_headline" in suggestion, "Suggestion missing 'news_headline' field"
             assert "status" in suggestion, "Suggestion missing 'status' field"
         

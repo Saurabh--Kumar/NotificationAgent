@@ -1,4 +1,5 @@
 import logging
+import traceback
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -85,41 +86,88 @@ notification_agent = workflow.compile()
 
 def generate_notifications(topic: str, company_id: str | None = None) -> list:
     """Invoke the agent to generate notification suggestions for a given topic.
-    
+
     Returns:
         List of pairs [notification_text, news_headline] for each suggestion.
     """
     logging.info(f"module=app.agent.agent method=generate_notifications message=Starting notification generation for topic: {topic}")
-    
-    initial_message = HumanMessage(
-        content=NOTIFICATION_GENERATION_PROMPT.format(notification_topic=topic, company_id=company_id)
-    )
-    state = {
-        "messages": [initial_message],
-        "company_id": company_id,
-        "topic": topic,
-    }
-    result = notification_agent.invoke(state)
+
+    try:
+        initial_message = HumanMessage(
+            content=NOTIFICATION_GENERATION_PROMPT.format(notification_topic=topic, company_id=company_id)
+        )
+        state = {
+            "messages": [initial_message],
+            "company_id": company_id,
+            "topic": topic,
+        }
+        result = notification_agent.invoke(state)
+    except Exception as agent_error:
+        logging.error(f"module=app.agent.agent method=generate_notifications message=Agent invocation failed: {str(agent_error)}")
+        logging.error(f"module=app.agent.agent method=generate_notifications message=Agent invocation traceback: {traceback.format_exc()}")
+        return []
+
     # Return only the last message content (the actual notification suggestions)
-    messages = result["messages"]
-    if messages:
+    messages = result.get("messages", [])
+    if not messages:
+        return []
+
+    try:
         last_message = messages[-1]
-        content = getattr(last_message, "content", str(last_message))
+        raw_content = getattr(last_message, "content", None)
+
+        # Normalize content to string
+        if isinstance(raw_content, list):
+            # Multimodal content: extract text parts
+            content = " ".join(
+                part.get("text", "") for part in raw_content if isinstance(part, dict)
+            )
+        elif isinstance(raw_content, str):
+            content = raw_content
+        elif isinstance(raw_content, dict):
+            content = raw_content.get("text", str(raw_content))
+        else:
+            content = str(raw_content) if raw_content is not None else ""
+
+        logging.info(f"module=app.agent.agent method=generate_notifications message=Raw LLM content (first 500 chars): {content[:500]}")
+
         # Try to parse as JSON, fall back to string if not valid JSON
         import json
         import re
-        
+
         def extract_validated_suggestions(parsed):
-            if isinstance(parsed, list):
-                validated = []
-                for item in parsed:
-                    if isinstance(item, list) and len(item) == 2:
-                        validated.append([str(item[0]), str(item[1])])
-                    elif isinstance(item, str):
-                        validated.append([item, ""])
-                return validated
-            return None
-        
+            try:
+                # Handle case where parsed is just a string (e.g., '"notification_text"')
+                if isinstance(parsed, str):
+                    logging.warning(f"module=app.agent.agent method=generate_notifications message=Parsed content is a string, not JSON object/array: {parsed[:200]}")
+                    return None
+                if isinstance(parsed, dict):
+                    notification_text = parsed.get("notification_text") or parsed.get("text")
+                    news_headline = parsed.get("news_headline", "")
+                    if notification_text is not None:
+                        return [[str(notification_text), str(news_headline)]]
+                if isinstance(parsed, list):
+                    validated = []
+                    for item in parsed:
+                        try:
+                            if isinstance(item, dict):
+                                notification_text = item.get("notification_text") or item.get("text")
+                                news_headline = item.get("news_headline", "")
+                                if notification_text is not None:
+                                    validated.append([str(notification_text), str(news_headline)])
+                            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                                validated.append([str(item[0]), str(item[1])])
+                            elif isinstance(item, str):
+                                validated.append([item, ""])
+                        except Exception as item_error:
+                            logging.warning(f"module=app.agent.agent method=generate_notifications message=Failed to process item {item}: {str(item_error)}")
+                            continue
+                    return validated if validated else None
+                return None
+            except Exception as parse_error:
+                logging.warning(f"module=app.agent.agent method=generate_notifications message=Error in extract_validated_suggestions: {str(parse_error)}")
+                return None
+
         def clean_json_string(s):
             # Remove trailing commas before ] or }
             s = re.sub(r',\s*([\]\}])', r'\1', s)
@@ -131,7 +179,7 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
             s = re.sub(r'`(?:json)?\s*', '', s)
             s = re.sub(r'\s*`', '', s)
             return s.strip()
-        
+
         # Strategy 1: Try to parse the entire content as JSON
         try:
             parsed = json.loads(content)
@@ -139,9 +187,11 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
             if validated is not None:
                 logging.info(f"module=app.agent.agent method=generate_notifications message=Generated {len(validated)} suggestions")
                 return validated
-        except (json.JSONDecodeError, TypeError):
+            logging.warning(f"module=app.agent.agent method=generate_notifications message=Parsed JSON but no valid suggestions extracted from: {content[:200]}")
+        except (json.JSONDecodeError, TypeError) as e:
+            logging.warning(f"module=app.agent.agent method=generate_notifications message=Strategy 1 JSON parse failed: {str(e)}")
             pass
-        
+
         # Strategy 2: Try to find a JSON array within the text
         start = content.find('[')
         end = content.rfind(']')
@@ -155,7 +205,7 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
                     return validated
             except (json.JSONDecodeError, TypeError):
                 pass
-        
+
         # Strategy 3: Clean the entire content and try to parse
         try:
             cleaned = clean_json_string(content)
@@ -166,7 +216,10 @@ def generate_notifications(topic: str, company_id: str | None = None) -> list:
                 return validated
         except (json.JSONDecodeError, TypeError):
             pass
-        
+
         logging.info(f"module=app.agent.agent method=generate_notifications message=Generated 1 suggestion (fallback format)")
         return [[content, ""]] if content else []
-    return []
+    except Exception as e:
+        logging.error(f"module=app.agent.agent method=generate_notifications message=Unexpected error: {str(e)}")
+        logging.error(f"module=app.agent.agent method=generate_notifications message=Traceback: {traceback.format_exc()}")
+        return []

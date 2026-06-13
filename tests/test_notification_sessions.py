@@ -1,3 +1,4 @@
+import json
 import uuid
 from fastapi import status
 from sqlalchemy.orm import Session
@@ -97,6 +98,9 @@ def test_get_notification_session(client, db: Session, test_company_id, test_cam
     assert data["topic"] == "Test Topic"
     assert "conversation_history" in data
 
+    # Verify response is proper JSON serializable format
+    assert json.dumps(data, ensure_ascii=False)
+
 
 def test_get_nonexistent_session(client):
     non_existent_id = "00000000-0000-0000-0000-000000000000"
@@ -154,6 +158,7 @@ def test_add_feedback(client, db: Session, test_company_id, test_campaign_id):
     assert len(data["conversation_history"]) == 2
     assert data["conversation_history"][-1]["role"] == "user"
     assert "Make it more exciting and urgent" in data["conversation_history"][-1]["content"]
+    assert json.dumps(data, ensure_ascii=False)
 
 
 def test_add_feedback_nonexistent_session(client):
@@ -179,9 +184,9 @@ def test_publish_notifications(client, db: Session, test_company_id, test_campai
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
     # Manually set suggestions for testing
     db_session.all_suggestions = [
-        {"id": "sugg-1", "text": "Notification 1", "status": "pending"},
-        {"id": "sugg-2", "text": "Notification 2", "status": "pending"},
-        {"id": "sugg-3", "text": "Notification 3", "status": "pending"},
+        {"id": "sugg-1", "notification_text": "Notification 1", "status": "pending"},
+        {"id": "sugg-2", "notification_text": "Notification 2", "status": "pending"},
+        {"id": "sugg-3", "notification_text": "Notification 3", "status": "pending"},
     ]
     db_session.status = NotificationSessionStatus.AWAITING_REVIEW
     db.commit()
@@ -199,6 +204,7 @@ def test_publish_notifications(client, db: Session, test_company_id, test_campai
     assert len(data["selected_suggestions"]) == 2
     assert data["selected_suggestions"][0]["id"] == "sugg-1"
     assert data["selected_suggestions"][1]["id"] == "sugg-3"
+    assert json.dumps(data, ensure_ascii=False)
 
 
 def test_publish_notifications_nonexistent_session(client):
@@ -223,7 +229,7 @@ def test_publish_notifications_invalid_ids(client, db: Session, test_company_id,
     )
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
     db_session.all_suggestions = [
-        {"id": "sugg-1", "text": "Notification 1", "status": "pending"},
+        {"id": "sugg-1", "notification_text": "Notification 1", "status": "pending"},
     ]
     db_session.status = NotificationSessionStatus.AWAITING_REVIEW
     db.commit()

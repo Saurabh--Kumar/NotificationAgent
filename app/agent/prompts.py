@@ -38,5 +38,5 @@ Important guidelines:
 - You can create multiple notifications from the same news item, each highlighting a different angle.
 - The notification should feel like a natural conversation starter, not a forced ad.
 
-Return the suggestions as a JSON array of pairs, where each pair is [notification_text, news_headline], e.g., 
-[["notification 1", "related news headline 1"], ["notification 2", "related news headline 2"], ...]"""
+Return the suggestions as a JSON array of objects, where each object has "notification_text" and "news_headline" keys, e.g.,
+[{{"notification_text": "notification 1", "news_headline": "related news headline 1"}}, {{"notification_text": "notification 2", "news_headline": "related news headline 2"}}, ...]"""

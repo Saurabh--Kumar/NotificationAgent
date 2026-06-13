@@ -28,3 +28,8 @@ env/
 dist/
 build/
 *.egg-info/
+
+# Agent and BMAD
+.agents/
+_bmad/
+*.agent

@@ -42,11 +42,11 @@ class SessionBase(SessionCreate):
 class Session(SessionBase):
     all_suggestions: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="All notification suggestions generated in this session"
+        description="All notification suggestions generated in this session. Each suggestion contains 'id', 'notification_text', 'news_headline', and 'status'."
     )
     selected_suggestions: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Suggestions selected by the admin"
+        description="Suggestions selected by the admin. Each suggestion contains 'id', 'notification_text', 'news_headline', and 'status'."
     )
     conversation_history: List[Dict[str, Any]] = Field(
         default_factory=list,
