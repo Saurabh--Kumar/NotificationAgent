@@ -59,6 +59,15 @@ class SessionResponse(BaseModel):
     status: str = Field(..., description="Current status of the session")
 
 
+class NotificationSessionResult(BaseModel):
+    session_id: UUID = Field(..., description="ID of the notification session")
+    status: str = Field(..., description="Current status of the notification session")
+    all_suggestions: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Generated notification suggestions. Each suggestion contains 'id', 'notification_text', 'news_headline', and 'status'."
+    )
+
+
 class FeedbackRequest(BaseModel):
     feedback: str = Field(..., description="Feedback text to append to conversation history")
 

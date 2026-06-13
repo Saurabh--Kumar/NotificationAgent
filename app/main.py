@@ -1,9 +1,14 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Ensure application INFO logs are visible in the console
+logging.basicConfig(level=logging.INFO)
+
 from app.api.health import router as health_router
 from app.api.endpoints.notification_sessions import router as notification_sessions_router
+from app.api.endpoints.notification_session_results import router as notification_session_results_router
 from app.thread_pool import shutdown as shutdown_thread_pool
 
 
@@ -32,6 +37,7 @@ app.add_middleware(
 # Include API routers
 app.include_router(health_router, prefix="/health", tags=["Health"])
 app.include_router(notification_sessions_router, prefix="/api/v1", tags=["Notification Sessions"])
+app.include_router(notification_session_results_router, prefix="/api/v1", tags=["Notification Session Results"])
 
 
 

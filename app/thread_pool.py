@@ -12,6 +12,14 @@ _executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="notification_w
 _semaphore = threading.Semaphore(5)
 
 
+def _ensure_executor() -> None:
+    """Ensure the thread pool executor is initialized and not shut down."""
+    global _executor, _semaphore
+    if getattr(_executor, "_shutdown", False):
+        _executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="notification_worker")
+        _semaphore = threading.Semaphore(5)
+
+
 def submit_task(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future:
     """
     Submit a callable to the background thread pool.
@@ -22,6 +30,8 @@ def submit_task(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future:
     Raises:
         RuntimeError: If the pool is saturated (all workers busy).
     """
+    _ensure_executor()
+
     if not _semaphore.acquire(blocking=False):
         logger.error(
             "module=app.thread_pool method=submit_task message=All workers busy, rejecting task"
