@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from uuid import UUID
 
 from app.crud import session as crud_session
@@ -61,14 +62,14 @@ async def create_notification_session(
 
 
 @router.get(
-    "/notification-sessions/{session_id}",
+    "/company/{company_id}/notification-sessions/{session_id}",
     response_model=Session,
     summary="Get notification session status",
     response_description="Notification session details"
 )
 async def get_notification_session(
     session_id: UUID,
-    company_id: str,
+    company_id: UUID,
     db: Session = Depends(get_db)
 ):
     """
@@ -82,19 +83,10 @@ async def get_notification_session(
     Returns:
         The notification session details
     """
-    try:
-        company_uuid = UUID(company_id)
-    except (ValueError, AttributeError):
-        logging.warning(f"module=app.api.endpoints.notification_sessions method=get_notification_session message=Invalid company_id format: {company_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid company_id format"
-        )
-    
     db_session = crud_session.get_notification_session(
-        db, 
+        db,
         session_id=session_id,
-        company_id=company_uuid
+        company_id=company_id
     )
     
     if not db_session:
@@ -110,27 +102,19 @@ async def get_notification_session(
 
 
 @router.post(
-    "/notification-sessions/{session_id}/feedback",
+    "/company/{company_id}/notification-sessions/{session_id}/feedback",
     response_model=Session,
     status_code=status.HTTP_200_OK,
     summary="Append feedback to a notification session",
 )
 async def add_feedback(
     session_id: UUID,
+    company_id: UUID,
     feedback: FeedbackRequest,
-    company_id: str,
     db: Session = Depends(get_db),
 ):
-    try:
-        company_uuid = UUID(company_id)
-    except (ValueError, AttributeError):
-        logging.warning(f"module=app.api.endpoints.notification_sessions method=add_feedback message=Invalid company_id format: {company_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid company_id format"
-        )
     db_session = crud_session.get_notification_session(
-        db, session_id=session_id, company_id=company_uuid
+        db, session_id=session_id, company_id=company_id
     )
     if not db_session:
         logging.warning(f"module=app.api.endpoints.notification_sessions method=add_feedback message=Session {session_id} not found")
@@ -153,27 +137,19 @@ async def add_feedback(
 
 
 @router.post(
-    "/notification-sessions/{session_id}/publish",
+    "/company/{company_id}/notification-sessions/{session_id}/publish",
     response_model=Session,
     status_code=status.HTTP_200_OK,
     summary="Publish selected notifications for a session",
 )
 async def publish_notifications(
     session_id: UUID,
+    company_id: UUID,
     publish_req: PublishRequest,
-    company_id: str,
     db: Session = Depends(get_db),
 ):
-    try:
-        company_uuid = UUID(company_id)
-    except (ValueError, AttributeError):
-        logging.warning(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Invalid company_id format: {company_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid company_id format"
-        )
     db_session = crud_session.get_notification_session(
-        db, session_id=session_id, company_id=company_uuid
+        db, session_id=session_id, company_id=company_id
     )
     if not db_session:
         logging.warning(f"module=app.api.endpoints.notification_sessions method=publish_notifications message=Session {session_id} not found")

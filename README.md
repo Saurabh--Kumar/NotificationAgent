@@ -122,7 +122,7 @@ Response:
 Creates a session and blocks until notifications are generated. Returns the full session with suggestions.
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/sync" \
+curl -X POST "http://localhost:8000/api/v1/company/a639cab1-240b-4d66-b084-751009a88255/notification/sync" \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "sports",
@@ -140,13 +140,13 @@ Response includes:
 ### Get notification session
 
 ```bash
-curl "http://localhost:8000/api/v1/notification-sessions/{session_id}?company_id={company_id}"
+curl "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}"
 ```
 
 ### Add feedback to a session
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/feedback?company_id={company_id}" \
+curl -X POST "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}/feedback" \
   -H "Content-Type: application/json" \
   -d '{"feedback": "Make the tone more urgent"}'
 ```
@@ -154,7 +154,7 @@ curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/fe
 ### Publish selected notifications
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/publish?company_id={company_id}" \
+curl -X POST "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}/publish" \
   -H "Content-Type: application/json" \
   -d '{"selected_suggestion_ids": ["suggestion-id-1", "suggestion-id-2"]}'
 ```

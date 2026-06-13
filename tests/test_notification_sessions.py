@@ -84,8 +84,7 @@ def test_get_notification_session(client, db: Session, test_company_id, test_cam
     db.commit()
 
     response = client.get(
-        f"/api/v1/notification-sessions/{db_session.id}",
-        params={"company_id": test_company_id}
+        f"/api/v1/company/{test_company_id}/notification-sessions/{db_session.id}"
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -105,8 +104,7 @@ def test_get_notification_session(client, db: Session, test_company_id, test_cam
 def test_get_nonexistent_session(client):
     non_existent_id = "00000000-0000-0000-0000-000000000000"
     response = client.get(
-        f"/api/v1/notification-sessions/{non_existent_id}",
-        params={"company_id": "11111111-1111-1111-1111-111111111111"}
+        f"/api/v1/company/11111111-1111-1111-1111-111111111111/notification-sessions/{non_existent_id}"
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -127,8 +125,7 @@ def test_get_session_wrong_company_id(client, db: Session, test_company_id, test
     # Try to access with a different company_id
     wrong_company_id = "99999999-9999-9999-9999-999999999999"
     response = client.get(
-        f"/api/v1/notification-sessions/{db_session.id}",
-        params={"company_id": wrong_company_id}
+        f"/api/v1/company/{wrong_company_id}/notification-sessions/{db_session.id}"
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -148,9 +145,8 @@ def test_add_feedback(client, db: Session, test_company_id, test_campaign_id):
 
     feedback_data = {"feedback": "Make it more exciting and urgent"}
     response = client.post(
-        f"/api/v1/notification-sessions/{db_session.id}/feedback",
+        f"/api/v1/company/{test_company_id}/notification-sessions/{db_session.id}/feedback",
         json=feedback_data,
-        params={"company_id": test_company_id}
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -166,9 +162,8 @@ def test_add_feedback_nonexistent_session(client):
     non_existent_id = "00000000-0000-0000-0000-000000000000"
     feedback_data = {"feedback": "Some feedback"}
     response = client.post(
-        f"/api/v1/notification-sessions/{non_existent_id}/feedback",
+        f"/api/v1/company/11111111-1111-1111-1111-111111111111/notification-sessions/{non_existent_id}/feedback",
         json=feedback_data,
-        params={"company_id": "11111111-1111-1111-1111-111111111111"}
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -193,9 +188,8 @@ def test_publish_notifications(client, db: Session, test_company_id, test_campai
 
     publish_data = {"selected_suggestion_ids": ["sugg-1", "sugg-3"]}
     response = client.post(
-        f"/api/v1/notification-sessions/{db_session.id}/publish",
+        f"/api/v1/company/{test_company_id}/notification-sessions/{db_session.id}/publish",
         json=publish_data,
-        params={"company_id": test_company_id}
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -212,9 +206,8 @@ def test_publish_notifications_nonexistent_session(client):
     non_existent_id = "00000000-0000-0000-0000-000000000000"
     publish_data = {"selected_suggestion_ids": ["sugg-1"]}
     response = client.post(
-        f"/api/v1/notification-sessions/{non_existent_id}/publish",
+        f"/api/v1/company/11111111-1111-1111-1111-111111111111/notification-sessions/{non_existent_id}/publish",
         json=publish_data,
-        params={"company_id": "11111111-1111-1111-1111-111111111111"}
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -236,9 +229,8 @@ def test_publish_notifications_invalid_ids(client, db: Session, test_company_id,
 
     publish_data = {"selected_suggestion_ids": ["non-existent-id"]}
     response = client.post(
-        f"/api/v1/notification-sessions/{db_session.id}/publish",
+        f"/api/v1/company/{test_company_id}/notification-sessions/{db_session.id}/publish",
         json=publish_data,
-        params={"company_id": test_company_id}
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "No valid suggestions selected" in response.text

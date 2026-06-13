@@ -59,7 +59,7 @@ class SessionResponse(BaseModel):
     status: str = Field(..., description="Current status of the session")
 
 
-class NotificationSessionResult(BaseModel):
+class NotificationSyncResponse(BaseModel):
     session_id: UUID = Field(..., description="ID of the notification session")
     status: str = Field(..., description="Current status of the notification session")
     all_suggestions: List[Dict[str, Any]] = Field(

@@ -32,7 +32,7 @@ curl -X POST http://localhost:8000/api/v1/notification-sessions \
 Equivalent to `test_ollama_llm_generates_notifications` in [`tests/test_agent_e2e.py`](tests/test_agent_e2e.py:13).
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/notification-sessions/sync \
+curl -X POST http://localhost:8000/api/v1/company/a639cab1-240b-4d66-b084-751009a88255/notification/sync \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "sports",
@@ -53,7 +53,7 @@ Expected response includes:
 ## Get Notification Session
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/notification-sessions/123e4567-e89b-12d3-a456-426614174000?company_id=123e4567-e89b-12d3-a456-426614174001"
+curl -X GET "http://localhost:8000/api/v1/company/123e4567-e89b-12d3-a456-426614174001/notification-sessions/123e4567-e89b-12d3-a456-426614174000"
 ```
 
 ---
@@ -61,7 +61,7 @@ curl -X GET "http://localhost:8000/api/v1/notification-sessions/123e4567-e89b-12
 ## Add Feedback to Session
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/123e4567-e89b-12d3-a456-426614174000/feedback?company_id=123e4567-e89b-12d3-a456-426614174001" \
+curl -X POST "http://localhost:8000/api/v1/company/123e4567-e89b-12d3-a456-426614174001/notification-sessions/123e4567-e89b-12d3-a456-426614174000/feedback" \
   -H "Content-Type: application/json" \
   -d '{
     "feedback": "Make the notifications more urgent and include a discount code."
@@ -73,7 +73,7 @@ curl -X POST "http://localhost:8000/api/v1/notification-sessions/123e4567-e89b-1
 ## Publish Selected Notifications
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/123e4567-e89b-12d3-a456-426614174000/publish?company_id=123e4567-e89b-12d3-a456-426614174001" \
+curl -X POST "http://localhost:8000/api/v1/company/123e4567-e89b-12d3-a456-426614174001/notification-sessions/123e4567-e89b-12d3-a456-426614174000/publish" \
   -H "Content-Type: application/json" \
   -d '{
     "selected_suggestion_ids": ["suggestion-id-1", "suggestion-id-2"]

@@ -107,8 +107,7 @@ def test_async_notification_session_polling():
         final_response = None
         while time.monotonic() < deadline:
             final_response = client.get(
-                f"/api/v1/notification-sessions/{session_id}",
-                params={"company_id": request_data["company_id"]},
+                f"/api/v1/company/{request_data['company_id']}/notification-sessions/{session_id}",
             )
             assert final_response.status_code == status.HTTP_200_OK, final_response.text
 

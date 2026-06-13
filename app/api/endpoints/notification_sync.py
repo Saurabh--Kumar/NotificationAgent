@@ -7,7 +7,7 @@ from uuid import UUID
 from app.api.dependencies import get_db
 from app.crud import session as crud_session
 from app.models.enums import NotificationSessionStatus
-from app.schemas.session import NotificationSessionResult, SessionCreate
+from app.schemas.session import NotificationSyncResponse, SessionCreate
 from app.tasks import run_agent_task
 
 
@@ -15,34 +15,42 @@ router = APIRouter()
 
 
 @router.post(
-    "/notification-sessions/sync-result",
-    response_model=NotificationSessionResult,
+    "/company/{company_id}/notification/sync",
+    response_model=NotificationSyncResponse,
     status_code=status.HTTP_200_OK,
-    summary="Create notification session and return generated results",
-    response_description="Notification session result with generated suggestions",
+    summary="Create notification session and return generated notifications",
+    response_description="Notification session with generated suggestions",
 )
-async def create_notification_session_sync_result(
+async def create_notification_session_sync(
+    company_id: UUID,
     session_data: SessionCreate,
     db: Session = Depends(get_db),
 ):
     """
     Create a notification generation session, run the agent synchronously, and return
-    the generated result payload.
+    the generated notifications.
 
-    The response intentionally contains only the session identifiers, status, and
+    The response contains the session identifiers, status, and
     generated suggestions. It does not include conversation history.
     """
+    # Ensure the company_id in the path matches the one in the request body
+    if session_data.company_id != company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="company_id in path does not match company_id in request body"
+        )
+
     db_session = crud_session.create_notification_session(db=db, session_in=session_data)
 
     logging.info(
-        f"module=app.api.endpoints.notification_session_results method=create_notification_session_sync_result message=Created session {db_session.id}"
+        f"module=app.api.endpoints.notification_sync method=create_notification_session_sync message=Created session {db_session.id}"
     )
 
     result = run_agent_task(str(db_session.id))
 
     if result.get("status") != "success":
         logging.error(
-            f"module=app.api.endpoints.notification_session_results method=create_notification_session_sync_result message=Task failed: {result.get('message')}"
+            f"module=app.api.endpoints.notification_sync method=create_notification_session_sync message=Task failed: {result.get('message')}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -58,7 +66,7 @@ async def create_notification_session_sync_result(
         )
 
     logging.info(
-        f"module=app.api.endpoints.notification_session_results method=create_notification_session_sync_result message=Completed sync result task for session {db_session.id}"
+        f"module=app.api.endpoints.notification_sync method=create_notification_session_sync message=Completed sync task for session {db_session.id}"
     )
 
     return {

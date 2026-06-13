@@ -56,7 +56,7 @@ The system is designed around a decoupled, service-oriented architecture.
 
 ## 3\. API Endpoints (FastAPI)
 
-All endpoints are protected and require `company_id` and `admin_id` for authorization and multi-tenancy.
+All endpoints are protected and require `company_id` and `admin_id` for authorization and multi-tenancy. The `company_id` is embedded in the URL path for all session-related endpoints to enforce multi-tenancy at the routing level.
 
 ### `POST /api/v1/notification-sessions`
 
@@ -64,7 +64,10 @@ All endpoints are protected and require `company_id` and `admin_id` for authoriz
   * **Request Body:**
     ```json
     {
-      "topic": "Sports" // Optional
+      "topic": "Sports", // Optional
+      "campaign_id": "uuid",
+      "company_id": "uuid",
+      "admin_id": "uuid"
     }
     ```
   * **Workflow:**
@@ -79,22 +82,60 @@ All endpoints are protected and require `company_id` and `admin_id` for authoriz
     }
     ```
 
-### `GET /api/v1/notification-sessions/{session_id}`
+### `POST /api/v1/company/{company_id}/notification/sync`
+
+  * **Description:** Creates a session and blocks until notifications are generated. Returns the full session with suggestions.
+  * **Path Parameter:** `company_id` (UUID).
+  * **Request Body:**
+    ```json
+    {
+      "topic": "Sports", // Optional
+      "campaign_id": "uuid",
+      "company_id": "uuid",
+      "admin_id": "uuid"
+    }
+    ```
+  * **Workflow:**
+    1.  Create a new `Session` record in the database.
+    2.  Run the agent synchronously.
+    3.  Return the session with generated suggestions.
+  * **Response Body (200):**
+    ```json
+    {
+      "session_id": "uuid-v4-string",
+      "status": "AWAITING_REVIEW",
+      "all_suggestions": [
+        {
+          "id": "suggestion-id",
+          "notification_text": "🔥 Score big this weekend!",
+          "news_headline": "Sports news headline",
+          "status": "pending"
+        }
+      ]
+    }
+    ```
+
+### `GET /api/v1/company/{company_id}/notification-sessions/{session_id}`
 
   * **Description:** Pollable endpoint for the UI to check the status and retrieve results of a session.
-  * **Path Parameter:** `session_id` (string).
+  * **Path Parameters:** `company_id` (UUID), `session_id` (UUID).
   * **Workflow:**
-    1.  Fetch the `Session` record from the database using the `session_id`.
+    1.  Fetch the `Session` record from the database using the `session_id` and `company_id`.
     2.  Return the session's current status and any generated suggestions.
   * **Response Body (200):**
     ```json
     {
       "session_id": "uuid-v4-string",
       "status": "AWAITING_REVIEW", // or "PROCESSING", "COMPLETED"
-      "suggestions": [
-        "🔥 Score big this weekend with our 50% off sports gear sale!",
-        "Don't get left on the sidelines! Major deals on all team jerseys now."
+      "all_suggestions": [
+        {
+          "id": "suggestion-id",
+          "notification_text": "🔥 Score big this weekend!",
+          "news_headline": "Sports news headline",
+          "status": "pending"
+        }
       ],
+      "selected_suggestions": [],
       "conversation_history": [
         {"role": "user", "content": "Generate notifications about Sports"},
         {"role": "assistant", "content": "Here are 5 suggestions..."}
@@ -102,53 +143,52 @@ All endpoints are protected and require `company_id` and `admin_id` for authoriz
     }
     ```
 
-### `POST /api/v1/notification-sessions/{session_id}/feedback`
+### `POST /api/v1/company/{company_id}/notification-sessions/{session_id}/feedback`
 
   * **Description:** Allows the admin to provide feedback or ask for modifications.
-  * **Path Parameter:** `session_id` (string).
+  * **Path Parameters:** `company_id` (UUID), `session_id` (UUID).
   * **Request Body:**
     ```json
     {
-      "message": "These are good, but can you make them funnier and add emojis?"
+      "feedback": "These are good, but can you make them funnier and add emojis?"
     }
     ```
   * **Workflow:**
     1.  Load the session and its `conversation_history` from the database.
     2.  Append the new admin message to the history.
-    3.  Update the session status to `PROCESSING`.
+    3.  Update the session status to `AWAITING_REVIEW`.
     4.  Dispatch another `run_agent_task` with the `session_id`.
-    5.  Return an immediate `202 Accepted` response.
-  * **Response Body (202):**
+    5.  Return the updated session.
+  * **Response Body (200):**
     ```json
     {
       "session_id": "uuid-v4-string",
-      "status": "PROCESSING"
+      "status": "AWAITING_REVIEW",
+      "conversation_history": [...]
     }
     ```
 
-### `POST /api/v1/notification-sessions/{session_id}/publish`
+### `POST /api/v1/company/{company_id}/notification-sessions/{session_id}/publish`
 
   * **Description:** Sends the final, admin-approved notifications. **This endpoint does not interact with the agent.**
-  * **Path Parameter:** `session_id` (string).
+  * **Path Parameters:** `company_id` (UUID), `session_id` (UUID).
   * **Request Body:**
     ```json
     {
-      "notifications": [
-        "🔥 Score big this weekend with our 50% off sports gear sale! ⚽️",
-        "Don't get left on the sidelines! Major deals on all team jerseys now. 👕"
-      ]
+      "selected_suggestion_ids": ["suggestion-id-1", "suggestion-id-2"]
     }
     ```
   * **Workflow:**
     1.  Validate the request.
-    2.  Make a secure, server-to-server call to the customer's registered Notification Service webhook/API.
-    3.  On success, update the session status to `COMPLETED`.
+    2.  Update the session with the selected suggestions.
+    3.  Update the session status to `COMPLETED`.
     4.  Return a `200 OK` response.
   * **Response Body (200):**
     ```json
     {
-      "status": "SUCCESS",
-      "message": "2 notifications have been queued for delivery."
+      "session_id": "uuid-v4-string",
+      "status": "COMPLETED",
+      "selected_suggestions": [...]
     }
     ```
 

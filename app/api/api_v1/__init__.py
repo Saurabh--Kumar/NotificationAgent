@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import notification_session_results, notification_sessions
+from app.api.endpoints import notification_sessions, notification_sync
 
 api_router = APIRouter()
 
@@ -10,7 +10,7 @@ api_router.include_router(
     tags=["notification-sessions"]
 )
 api_router.include_router(
-    notification_session_results.router,
+    notification_sync.router,
     prefix="/api/v1",
-    tags=["notification-session-results"]
+    tags=["notification-sync"]
 )
