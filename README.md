@@ -92,7 +92,48 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 The API will be available at `http://localhost:8000`. Access the interactive API documentation at `http://localhost:8000/docs`.
 
+## Admin UI
+
+The Phase 1 admin UI is available at `http://localhost:8000/static/admin.html`.
+
+### Features
+- **Company dropdown**: Shows distinct company names derived from the campaigns table
+- **Campaign dropdown**: Shows only active campaigns for the selected company
+- **Topic selector**: Choose from agriculture, sports, business, technologies, or latest
+- **Campaign details panel**: Displays full campaign information when a campaign is selected
+- **Generate button**: Creates a notification generation session
+- **Loading state + polling**: Polls every 20 seconds to accommodate local LLM generation (6-8 minutes)
+- **Suggestion list**: Shows generated notifications with checkboxes and the news headline used for generation
+- **Selected area**: Accumulates selected notifications across generations
+- **Publish button**: Publishes selected notifications
+
+### UI Flow
+1. Select a company from the dropdown
+2. Select an active campaign from the dropdown
+3. Review the campaign details panel
+4. Select a topic
+5. Click "Generate Notifications"
+6. Wait for generation to complete (polling every 20 seconds)
+7. Check the suggestions you want to publish
+8. Click "Publish Selected"
+
 ## API Usage
+
+### Get Companies
+
+Fetch distinct companies derived from the campaigns table.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/companies"
+```
+
+### Get Active Campaigns
+
+Fetch active campaigns for a specific company.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/companies/{company_id}/campaigns"
+```
 
 ### Create notification session (async)
 

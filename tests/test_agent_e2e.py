@@ -103,7 +103,7 @@ def test_async_notification_session_polling():
         create_data = create_response.json()
         session_id = create_data["session_id"]
 
-        deadline = time.monotonic() + 300
+        deadline = time.monotonic() + 500
         final_response = None
         while time.monotonic() < deadline:
             final_response = client.get(
@@ -117,7 +117,7 @@ def test_async_notification_session_polling():
                 assert "conversation_history" in final_data
                 return
 
-            time.sleep(1)
+            time.sleep(30)
 
         if final_response is not None:
             pytest.fail(f"Notification session did not reach {NotificationSessionStatus.AWAITING_REVIEW.value} before timeout. Last response: {final_response.text}")

@@ -12,16 +12,87 @@ curl -X GET http://localhost:8000/health
 
 ---
 
+## Get Companies
+
+Fetch distinct companies derived from the campaigns table.
+
+```bash
+curl -X GET http://localhost:8000/api/v1/companies
+```
+
+Expected response:
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174001",
+    "name": "Test Company"
+  }
+]
+```
+
+---
+
+## Get Active Campaigns for a Company
+
+Fetch only active campaigns for a specific company.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/companies/123e4567-e89b-12d3-a456-426614174001/campaigns"
+```
+
+Expected response:
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "company_id": "123e4567-e89b-12d3-a456-426614174001",
+    "company_name": "Test Company",
+    "name": "Summer Sale",
+    "description": "Summer promotional campaign",
+    "theme": "Discount",
+    "category": "Retail",
+    "brand_voice": "Friendly and professional",
+    "target_audience": "Young adults aged 18-35",
+    "industry": "Technology",
+    "status": "ACTIVE",
+    "start_date": "2025-01-01T00:00:00",
+    "end_date": "2025-12-31T23:59:59"
+  }
+]
+```
+
+---
+
+## Admin UI
+
+Access the Phase 1 admin UI at:
+
+```
+http://localhost:8000/static/admin.html
+```
+
+The UI provides:
+- Company dropdown (derived from campaigns table)
+- Campaign dropdown (active campaigns only)
+- Topic selector (agriculture, sports, business, technologies, latest)
+- Campaign details panel
+- Generate button with 20-second polling (for local LLM)
+- Suggestion list with checkboxes and news headlines
+- Selected notifications area
+- Publish button
+
+---
+
 ## Create Notification Session (Async)
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/notification-sessions \
   -H "Content-Type: application/json" \
   -d '{
-    "topic": "Summer Sale",
+    "topic": "sports",
     "campaign_id": "123e4567-e89b-12d3-a456-426614174000",
     "company_id": "123e4567-e89b-12d3-a456-426614174001",
-    "admin_id": "123e4567-e89b-12d3-a456-426614174002"
+    "admin_id": "22222222-2222-2222-2222-222222222222"
   }'
 ```
 
