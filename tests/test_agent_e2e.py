@@ -7,6 +7,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.agent.tools import fetch_news
+from app.agent.agent import tools_node
 from app.core.config import settings
 from app.tasks import run_agent_task
 from app.crud import session as crud_session
@@ -132,7 +133,7 @@ def test_async_notification_session_polling():
 
 def test_fetch_news_tool():
     """Test that the fetch_news tool can retrieve news (real or dummy for testing)."""
-    result = fetch_news.invoke({})
+    result = fetch_news.invoke({"news_category": "sports"})
     assert result is not None
     assert len(result) > 0
     # Parse JSON response
@@ -149,3 +150,45 @@ def test_fetch_news_tool():
     assert isinstance(data["articles"], list), f"Expected list for articles, got {type(data['articles'])}"
     assert len(data["articles"]) > 0, "Expected at least one article"
     print(f"News result: {result[:2000]}...")
+
+
+def test_fetch_news_tool_requires_news_category():
+    """Test that fetch_news requires news_category argument."""
+    result = fetch_news.invoke({})
+    data = json.loads(result)
+    
+    assert data["error"] is not None
+    assert "news_category is required" in data["error"]
+
+
+def test_tools_node_injects_topic_into_fetch_news(monkeypatch):
+    """Test that tools_node passes the selected topic as news_category to fetch_news."""
+    invoked_args = {}
+
+    class MockTool:
+        def invoke(self, args):
+            invoked_args.update(args)
+            return json.dumps({"articles": [], "error": None})
+
+    monkeypatch.setattr("app.agent.agent.fetch_news", MockTool())
+    monkeypatch.setattr("app.agent.agent.fetch_active_campaigns", MockTool())
+
+    state = {
+        "messages": [
+            type("Message", (), {"tool_calls": [
+                {
+                    "name": "fetch_news",
+                    "args": {},
+                    "id": "call-1"
+                }
+            ]})
+        ],
+        "company_id": "a639cab1-240b-4d66-b084-751009a88255",
+        "topic": "business"
+    }
+
+    result = tools_node(state)
+
+    assert invoked_args == {"news_category": "business"}
+    assert len(result["messages"]) == 1
+    assert result["messages"][0].content == '{"articles": [], "error": null}'

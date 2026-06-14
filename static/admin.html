@@ -65,6 +65,39 @@
             gap: 20px;
         }
 
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 350px;
+        }
+
+        .toast-success {
+            background: var(--success-color);
+        }
+
+        .toast-error {
+            background: var(--danger-color);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: 12px;
@@ -382,11 +415,6 @@
                     </select>
                 </div>
 
-                <div class="campaign-details hidden" id="campaignDetails">
-                    <h3>Campaign Details</h3>
-                    <div class="detail-grid" id="campaignDetailsContent"></div>
-                </div>
-
                 <div class="actions">
                     <button class="btn" id="generateBtn" disabled>Generate Notifications</button>
                 </div>
@@ -394,11 +422,12 @@
             </div>
 
             <div class="card">
-                <h2>Session Status</h2>
-                <div id="statusBar" class="status-bar status-idle">
-                    Select a company and campaign to get started.
+                <h2>Campaign Details</h2>
+                <div class="campaign-details" id="campaignDetails">
+                    <div class="detail-grid" id="campaignDetailsContent">
+                        <div class="empty-state">Select a campaign to view details.</div>
+                    </div>
                 </div>
-                <div id="pollingStatus" class="hidden"></div>
             </div>
         </div>
 
@@ -446,8 +475,6 @@
             topicSelect: document.getElementById('topicSelect'),
             generateBtn: document.getElementById('generateBtn'),
             publishBtn: document.getElementById('publishBtn'),
-            statusBar: document.getElementById('statusBar'),
-            pollingStatus: document.getElementById('pollingStatus'),
             campaignDetails: document.getElementById('campaignDetails'),
             campaignDetailsContent: document.getElementById('campaignDetailsContent'),
             suggestionsList: document.getElementById('suggestionsList'),
@@ -464,7 +491,7 @@
                 state.companies = await response.json();
                 populateCompanyDropdown();
             } catch (error) {
-                showError(`Failed to fetch companies: ${error.message}`);
+                showFloater(`Failed to fetch companies: ${error.message}`, 'error');
             }
         }
 
@@ -488,7 +515,7 @@
                 state.campaigns = await response.json();
                 populateCampaignDropdown();
             } catch (error) {
-                showError(`Failed to fetch campaigns: ${error.message}`);
+                showFloater(`Failed to fetch campaigns: ${error.message}`, 'error');
             }
         }
 
@@ -540,7 +567,7 @@
 
         async function generateNotifications() {
             if (!state.selectedCompanyId || !state.selectedCampaignId || !state.selectedTopic) {
-                showError('Please select company, campaign, and topic before generating.');
+                showFloater('Please select company, campaign, and topic before generating.', 'error');
                 return;
             }
 
@@ -568,10 +595,9 @@
                 const data = await response.json();
                 state.currentSessionId = data.session_id;
                 state.pollAttempts = 0;
-                showStatus('Generating notifications...', 'processing');
                 startPolling();
             } catch (error) {
-                showError(`Failed to generate notifications: ${error.message}`);
+                showFloater(`Failed to generate notifications: ${error.message}`, 'error');
                 setLoading(false);
             }
         }
@@ -581,15 +607,12 @@
                 clearInterval(state.pollingInterval);
             }
             state.pollingInterval = setInterval(pollSession, POLL_INTERVAL_MS);
-            elements.pollingStatus.innerHTML = '<span class="spinner"></span> Polling for results...';
-            elements.pollingStatus.classList.remove('hidden');
         }
 
         async function pollSession() {
             if (!state.currentSessionId || !state.selectedCompanyId) return;
 
             state.pollAttempts++;
-            elements.pollingStatus.innerHTML = `<span class="spinner"></span> Polling for results... (Attempt ${state.pollAttempts}/${MAX_POLL_ATTEMPTS})`;
 
             try {
                 const response = await fetch(`${API_BASE}/company/${state.selectedCompanyId}/notification-sessions/${state.currentSessionId}`);
@@ -603,19 +626,19 @@
                     stopPolling();
                     state.allSuggestions = session.all_suggestions || [];
                     renderSuggestions();
-                    showStatus(`Generation complete! ${state.allSuggestions.length} suggestions generated.`, 'ready');
+                    showFloater(`Notifications Generated (${state.allSuggestions.length} suggestions)`, 'success');
                     setLoading(false);
                 } else if (session.status === 'FAILED') {
                     stopPolling();
-                    showError('Notification generation failed. Please try again.');
+                    showFloater('Notification generation failed. Please try again.', 'error');
                     setLoading(false);
                 } else if (state.pollAttempts >= MAX_POLL_ATTEMPTS) {
                     stopPolling();
-                    showError('Polling timeout. Generation may still be running. Please check back later.');
+                    showFloater('Polling timeout. Generation may still be running. Please check back later.', 'error');
                     setLoading(false);
                 }
             } catch (error) {
-                showError(`Polling error: ${error.message}`);
+                showFloater(`Polling error: ${error.message}`, 'error');
             }
         }
 
@@ -624,7 +647,6 @@
                 clearInterval(state.pollingInterval);
                 state.pollingInterval = null;
             }
-            elements.pollingStatus.classList.add('hidden');
         }
 
         function renderSuggestions() {
@@ -691,7 +713,7 @@
 
         async function publishNotifications() {
             if (state.selectedSuggestions.length === 0) {
-                showError('Please select at least one suggestion to publish.');
+                showFloater('Please select at least one suggestion to publish.', 'error');
                 return;
             }
 
@@ -712,13 +734,27 @@
                     throw new Error(`Failed to publish: ${response.status}`);
                 }
 
-                showStatus(`Successfully published ${state.selectedSuggestions.length} notification(s).`, 'ready');
+                showFloater(`Successfully Published (${state.selectedSuggestions.length} notification(s))`, 'success');
                 state.selectedSuggestions = [];
                 renderSelectedSuggestions();
                 updatePublishButton();
             } catch (error) {
-                showError(`Failed to publish: ${error.message}`);
+                showFloater(`Failed to publish: ${error.message}`, 'error');
             }
+        }
+
+        function showFloater(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'opacity 0.3s, transform 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function updateGenerateButton() {
@@ -743,16 +779,6 @@
             }
         }
 
-        function showStatus(message, type) {
-            elements.statusBar.className = `status-bar status-${type}`;
-            elements.statusBar.textContent = message;
-        }
-
-        function showError(message) {
-            elements.statusBar.className = 'status-bar status-error';
-            elements.statusBar.textContent = message;
-        }
-
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -775,7 +801,6 @@
             renderSelectedSuggestions();
             updateGenerateButton();
             updatePublishButton();
-            showStatus('Select a campaign to get started.', 'idle');
 
             if (state.selectedCompanyId) {
                 fetchCampaigns(state.selectedCompanyId);
@@ -792,7 +817,6 @@
             renderSelectedSuggestions();
             updateGenerateButton();
             updatePublishButton();
-            showStatus(state.selectedCampaign ? 'Campaign selected. Choose a topic and generate.' : 'Select a campaign to get started.', 'idle');
         });
 
         elements.topicSelect.addEventListener('change', (event) => {

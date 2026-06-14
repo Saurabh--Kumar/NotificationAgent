@@ -51,13 +51,13 @@ def fetch_active_campaigns(company_id: Optional[str] = None) -> str:
 
 
 def _validate_news_category(news_category: Optional[str]) -> str:
-    """Validate and normalize the news category. Defaults to 'sports' if invalid."""
+    """Validate and normalize the news category. Raises error if missing or invalid."""
     if not news_category:
-        return "sports"
+        raise ValueError("news_category is required")
 
     valid_categories = ["agriculture", "sports", "business", "technologies", "latest"]
     if news_category not in valid_categories:
-        return "sports"
+        raise ValueError(f"Invalid news_category: {news_category}. Valid values: {', '.join(valid_categories)}")
 
     return news_category
 
@@ -209,35 +209,36 @@ def fetch_news(news_category: Optional[str] = None) -> str:
     This is different from the notification topic - this is the news category to fetch.
 
     Args:
-        news_category: Optional news category. Valid values: agriculture, sports, business, technologies, latest.
-               If not provided or invalid, defaults to "sports".
+        news_category: Required news category. Valid values: agriculture, sports, business, technologies, latest.
 
     Returns:
         JSON string with "articles" list and "error" field.
         Each article has: title, description, content, source, url.
 
     Example usage:
-        fetch_news() -> gets sports news (default)
         fetch_news("business") -> gets business news
         fetch_news("technologies") -> gets tech news
     """
-    news_category = _validate_news_category(news_category)
-    logging.info(f"module=app.agent.tools method=fetch_news message=Fetching news for category: {news_category}")
-
-    response, error = _fetch_news_with_retry(news_category)
-    if error:
-        return json.dumps({"articles": [], "error": str(error)})
-
     try:
-        data = response.json()
-    except (ValueError, json.JSONDecodeError) as e:
-        error_msg = f"Failed to parse news response: {str(e)}"
-        logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
-        return json.dumps({"articles": [], "error": error_msg})
+        news_category = _validate_news_category(news_category)
+        logging.info(f"module=app.agent.tools method=fetch_news message=Fetching news for category: {news_category}")
 
-    try:
-        news_list = _parse_news_response(data, news_category)
-    except RuntimeError as e:
+        response, error = _fetch_news_with_retry(news_category)
+        if error:
+            return json.dumps({"articles": [], "error": str(error)})
+
+        try:
+            data = response.json()
+        except (ValueError, json.JSONDecodeError) as e:
+            error_msg = f"Failed to parse news response: {str(e)}"
+            logging.error(f"module=app.agent.tools method=fetch_news message={error_msg}")
+            return json.dumps({"articles": [], "error": error_msg})
+
+        try:
+            news_list = _parse_news_response(data, news_category)
+        except RuntimeError as e:
+            return json.dumps({"articles": [], "error": str(e)})
+
+        return json.dumps({"articles": news_list, "error": None})
+    except ValueError as e:
         return json.dumps({"articles": [], "error": str(e)})
-
-    return json.dumps({"articles": news_list, "error": None})

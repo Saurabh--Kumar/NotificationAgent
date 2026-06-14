@@ -38,6 +38,7 @@ def tools_node(state: AgentState):
     tool_calls = getattr(last_message, "tool_calls", [])
     tool_messages = []
     company_id = state.get("company_id")
+    topic = state.get("topic")
 
     for tool_call in tool_calls:
         tool_name = tool_call["name"]
@@ -51,6 +52,9 @@ def tools_node(state: AgentState):
             result = fetch_active_campaigns.invoke(tool_args)
             logging.info(f"module=app.agent.agent method=tools_node message=Invoked fetch_active_campaigns for company_id: {company_id}")
         elif tool_name == "fetch_news":
+            # Inject topic from state as news_category if LLM didn't provide one
+            if topic and "news_category" not in tool_args:
+                tool_args = {**tool_args, "news_category": topic}
             result = fetch_news.invoke(tool_args)
             logging.info(f"module=app.agent.agent method=tools_node message=Invoked fetch_news with args: {tool_args}")
         else:
