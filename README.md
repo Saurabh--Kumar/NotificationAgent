@@ -9,17 +9,20 @@ This project implements a backend service that allows B2C enterprise customers t
 ## Features
 
 - Multi-tenant architecture with data isolation
-- Asynchronous task processing with Celery and Redis
+- Asynchronous task processing using a background thread pool
 - RESTful API built with FastAPI
 - Integration with LLM for intelligent notification generation
 - Human-in-the-loop workflow for approval
 - Database persistence with PostgreSQL
 
+## Architecture Note
+
+The application uses a background thread pool for asynchronous task processing. Each worker process maintains its own pool of 5 threads. When running multiple Uvicorn/Gunicorn workers, total concurrency scales accordingly (for example, 2 workers × 5 threads = 10 concurrent background tasks).
+
 ## Prerequisites
 
 - Python 3.9+
 - PostgreSQL 13+
-- (Optional) Redis 6.0+
 - Ollama (for local LLM inference)
 - (Optional) Docker and Docker Compose
 
@@ -55,11 +58,6 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-password
 POSTGRES_DB=notification_agent
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-ENABLE_ASYNC_TASKS=false
-
 # Security
 SECRET_KEY=your-secret-key-here
 
@@ -84,9 +82,6 @@ alembic upgrade head
 ### 5. Start the services
 
 ```bash
-# Start Redis (in a separate terminal)
-redis-server
-
 # Start Ollama (in a separate terminal)
 ollama serve
 
@@ -97,7 +92,48 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 The API will be available at `http://localhost:8000`. Access the interactive API documentation at `http://localhost:8000/docs`.
 
+## Admin UI
+
+The Phase 1 admin UI is available at `http://localhost:8000/static/admin.html`.
+
+### Features
+- **Company dropdown**: Shows distinct company names derived from the campaigns table
+- **Campaign dropdown**: Shows only active campaigns for the selected company
+- **Topic selector**: Choose from agriculture, sports, business, technologies, or latest
+- **Campaign details panel**: Displays full campaign information when a campaign is selected
+- **Generate button**: Creates a notification generation session
+- **Loading state + polling**: Polls every 20 seconds to accommodate local LLM generation (6-8 minutes)
+- **Suggestion list**: Shows generated notifications with checkboxes and the news headline used for generation
+- **Selected area**: Accumulates selected notifications across generations
+- **Publish button**: Publishes selected notifications
+
+### UI Flow
+1. Select a company from the dropdown
+2. Select an active campaign from the dropdown
+3. Review the campaign details panel
+4. Select a topic
+5. Click "Generate Notifications"
+6. Wait for generation to complete (polling every 20 seconds)
+7. Check the suggestions you want to publish
+8. Click "Publish Selected"
+
 ## API Usage
+
+### Get Companies
+
+Fetch distinct companies derived from the campaigns table.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/companies"
+```
+
+### Get Active Campaigns
+
+Fetch active campaigns for a specific company.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/companies/{company_id}/campaigns"
+```
 
 ### Create notification session (async)
 
@@ -127,7 +163,7 @@ Response:
 Creates a session and blocks until notifications are generated. Returns the full session with suggestions.
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/sync" \
+curl -X POST "http://localhost:8000/api/v1/company/a639cab1-240b-4d66-b084-751009a88255/notification/sync" \
   -H "Content-Type: application/json" \
   -d '{
     "topic": "sports",
@@ -145,13 +181,13 @@ Response includes:
 ### Get notification session
 
 ```bash
-curl "http://localhost:8000/api/v1/notification-sessions/{session_id}?company_id={company_id}"
+curl "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}"
 ```
 
 ### Add feedback to a session
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/feedback?company_id={company_id}" \
+curl -X POST "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}/feedback" \
   -H "Content-Type: application/json" \
   -d '{"feedback": "Make the tone more urgent"}'
 ```
@@ -159,7 +195,7 @@ curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/fe
 ### Publish selected notifications
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/notification-sessions/{session_id}/publish?company_id={company_id}" \
+curl -X POST "http://localhost:8000/api/v1/company/{company_id}/notification-sessions/{session_id}/publish" \
   -H "Content-Type: application/json" \
   -d '{"selected_suggestion_ids": ["suggestion-id-1", "suggestion-id-2"]}'
 ```

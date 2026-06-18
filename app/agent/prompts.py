@@ -27,6 +27,9 @@ Campaign data you can use includes:
 - target_audience: Who the notifications are targeting
 - industry: The industry sector
 
+News category selected by the admin: {notification_topic}
+CRITICAL: When calling the fetch_news tool, you MUST pass this exact news category as the "news_category" argument. Do not default to sports or use any other category.
+
 Examples of great notifications:
 - News: "Tech Adoption Survey 2024" + Campaign: "End of Reason Sale. Upto 90% off on latest fashion." -> "Tech adoption survey is live but what about fashion adoption? Shop Myntra with upto 90% off on latest styles!"
 - News: "Remote Work Report 2024" + Campaign: "Summer Sale Campaign" -> "Hot take: Remote work is here to stay. Get summer-ready with 50-90% off only on Myntra!"
@@ -38,5 +41,5 @@ Important guidelines:
 - You can create multiple notifications from the same news item, each highlighting a different angle.
 - The notification should feel like a natural conversation starter, not a forced ad.
 
-Return the suggestions as a JSON array of pairs, where each pair is [notification_text, news_headline], e.g., 
-[["notification 1", "related news headline 1"], ["notification 2", "related news headline 2"], ...]"""
+Return the suggestions as a JSON array of objects, where each object has "notification_text" and "news_headline" keys, e.g.,
+[{{"notification_text": "notification 1", "news_headline": "related news headline 1"}}, {{"notification_text": "notification 2", "news_headline": "related news headline 2"}}, ...]"""

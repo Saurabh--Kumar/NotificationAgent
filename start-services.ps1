@@ -33,23 +33,6 @@ function Test-Port {
     return $connection.TcpTestSucceeded
 }
 
-# Start Redis (using Docker)
-Write-Host ""
-Write-Host "=== Starting Redis ===" -ForegroundColor Green
-if (Test-Port 6379) {
-    Write-Host "Redis is already running on port 6379" -ForegroundColor Yellow
-} else {
-    Write-Host "Starting Redis container..." -ForegroundColor Cyan
-    docker run -d --name notification-agent-redis -p 6379:6379 redis:latest
-    Start-Sleep -Seconds 2
-    if (Test-Port 6379) {
-        Write-Host "Redis started successfully" -ForegroundColor Green
-    } else {
-        Write-Host "ERROR: Failed to start Redis" -ForegroundColor Red
-        exit 1
-    }
-}
-
 # Start PostgreSQL (using Docker)
 Write-Host ""
 Write-Host "=== Starting PostgreSQL ===" -ForegroundColor Green
@@ -84,12 +67,9 @@ if (Test-Port 5432) {
 Write-Host ""
 Write-Host "=== All services started successfully ===" -ForegroundColor Green
 Write-Host ""
-Write-Host "To start the application, run the following commands in separate terminals:" -ForegroundColor Cyan
+Write-Host "To start the application, run the following command in a terminal:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "1. Celery Worker:" -ForegroundColor Yellow
-Write-Host "   celery -A app.celery_app worker --loglevel=info --pool=solo" -ForegroundColor White
-Write-Host ""
-Write-Host "2. FastAPI Server:" -ForegroundColor Yellow
+Write-Host "FastAPI Server:" -ForegroundColor Yellow
 Write-Host "   uvicorn app.main:app --reload" -ForegroundColor White
 Write-Host ""
 Write-Host "Or use the start-all.ps1 script to start everything in the background." -ForegroundColor Cyan

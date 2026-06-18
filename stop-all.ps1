@@ -17,14 +17,6 @@ Write-Host "Background jobs stopped" -ForegroundColor Green
 Write-Host ""
 Write-Host "Stopping Docker containers..." -ForegroundColor Cyan
 
-# Stop Redis
-if (docker ps --filter "name=notification-agent-redis" --format "{{.Names}}" | Select-String "notification-agent-redis") {
-    Write-Host "  Stopping Redis..." -ForegroundColor Gray
-    docker stop notification-agent-redis | Out-Null
-    docker rm notification-agent-redis | Out-Null
-    Write-Host "  Redis stopped" -ForegroundColor Green
-}
-
 # Stop PostgreSQL
 if (docker ps --filter "name=notification-agent-postgres" --format "{{.Names}}" | Select-String "notification-agent-postgres") {
     Write-Host "  Stopping PostgreSQL..." -ForegroundColor Gray

@@ -1,16 +1,15 @@
+import json
 import logging
+import traceback
 from typing import Optional
 import uuid
 from uuid import UUID
 from sqlalchemy.orm import Session as DBSession
 
-from app.celery_app import celery_app
 from app.db.session import SessionLocal
 from app.crud import session as crud_session
 from app.models.enums import NotificationSessionStatus
 
-
-@celery_app.task(name="app.tasks.run_agent_task")
 
 def run_agent_task(session_id: str) -> dict:
     db: DBSession = SessionLocal()
@@ -37,24 +36,44 @@ def run_agent_task(session_id: str) -> dict:
 
         try:
             suggestions = generate_notifications(topic=topic, company_id=company_id)
-            
+
             logging.info(f"module=app.tasks method=run_agent_task message=Generated {len(suggestions)} suggestions")
-            
-            # Convert list of pairs [text, headline] to list of suggestion objects
-            suggestions_list = [
-                {
-                    "id": str(uuid.uuid4()),
-                    "text": pair[0] if isinstance(pair, list) and len(pair) >= 1 else str(pair),
-                    "news_headline": pair[1] if isinstance(pair, list) and len(pair) >= 2 else "",
-                    "status": "pending"
-                }
-                for pair in suggestions
-            ]
+            logging.info(f"module=app.tasks method=run_agent_task message=Suggestions type: {type(suggestions)}, first item type: {type(suggestions[0]) if suggestions else 'N/A'}")
+            logging.info(f"module=app.tasks method=run_agent_task message=Suggestions sample: {str(suggestions[:2])}")
+
+            # Convert list of pairs [notification_text, headline] to list of suggestion objects
+            suggestions_list = []
+            for pair in suggestions:
+                try:
+                    if isinstance(pair, list) and len(pair) >= 2:
+                        suggestions_list.append({
+                            "id": str(uuid.uuid4()),
+                            "notification_text": str(pair[0]),
+                            "news_headline": str(pair[1]),
+                            "status": "pending"
+                        })
+                    elif isinstance(pair, dict):
+                        suggestions_list.append({
+                            "id": str(uuid.uuid4()),
+                            "notification_text": str(pair.get("notification_text", pair.get("text", ""))),
+                            "news_headline": str(pair.get("news_headline", "")),
+                            "status": "pending"
+                        })
+                    else:
+                        suggestions_list.append({
+                            "id": str(uuid.uuid4()),
+                            "notification_text": str(pair),
+                            "news_headline": "",
+                            "status": "pending"
+                        })
+                except Exception as item_error:
+                    logging.warning(f"module=app.tasks method=run_agent_task message=Failed to process suggestion item {pair}: {str(item_error)}")
+                    continue
             
             # Add to conversation history
             conversation = [
                 {"role": "user", "content": f"Generate notifications for topic: {topic}"},
-                {"role": "assistant", "content": str(suggestions)}
+                {"role": "assistant", "content": suggestions_list}
             ]
 
             # Update session with generated suggestions and conversation history
@@ -79,6 +98,8 @@ def run_agent_task(session_id: str) -> dict:
                 status=NotificationSessionStatus.FAILED
             )
             logging.error(f"module=app.tasks method=run_agent_task message=Agent error: {str(agent_error)}")
+            logging.error(f"module=app.tasks method=run_agent_task message=Agent error type: {type(agent_error).__name__}")
+            logging.error(f"module=app.tasks method=run_agent_task message=Agent traceback: {traceback.format_exc()}")
             raise agent_error
         
         return {

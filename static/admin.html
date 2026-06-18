@@ -1,23 +1,834 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notification Agent Admin</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        h1 { color: #2c3e50; }
-        .session-list { margin-top: 20px; }
-        .session-item { background: #fff; padding: 10px; margin: 5px 0; border-radius: 4px; border: 1px solid #ddd; }
-        .btn { background: #3498db; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; }
-        .btn:hover { background: #2980b9; }
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #16a34a;
+            --success-hover: #15803d;
+            --danger-color: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --text-color: #1f2937;
+            --muted-color: #6b7280;
+            --warning-bg: #fef3c7;
+            --warning-border: #f59e0b;
+            --error-bg: #fee2e2;
+            --error-border: #ef4444;
+            --success-bg: #dcfce7;
+            --success-border: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            color: #1e3a8a;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--muted-color);
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 350px;
+        }
+
+        .toast-success {
+            background: var(--success-color);
+        }
+
+        .toast-error {
+            background: var(--danger-color);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #1e3a8a;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #374151;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        select:disabled, input[type="text"]:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: var(--success-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-hover);
+        }
+
+        .status-bar {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .status-idle {
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #818cf8;
+        }
+
+        .status-processing {
+            background: var(--warning-bg);
+            color: #92400e;
+            border: 1px solid var(--warning-border);
+        }
+
+        .status-ready {
+            background: var(--success-bg);
+            color: #166534;
+            border: 1px solid var(--success-border);
+        }
+
+        .status-error {
+            background: var(--error-bg);
+            color: #991b1b;
+            border: 1px solid var(--error-border);
+        }
+
+        .campaign-details {
+            background: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .campaign-details h3 {
+            color: #1e3a8a;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .detail-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detail-value {
+            margin-top: 4px;
+            color: #1f2937;
+        }
+
+        .detail-value.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .suggestions-list, .selected-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .suggestion-item, .selected-item {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            background: #fff;
+        }
+
+        .suggestion-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .suggestion-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 4px;
+            cursor: pointer;
+        }
+
+        .suggestion-text {
+            font-size: 15px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .news-headline {
+            font-size: 13px;
+            color: var(--muted-color);
+            background: #f3f4f6;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .selected-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .selected-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            color: var(--muted-color);
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .polling-info {
+            font-size: 12px;
+            color: var(--muted-color);
+            margin-top: 8px;
+        }
+
+        .selected-count {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            body {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Notification Sessions</h1>
-        <div class="session-list">
-            <!-- Session items will be dynamically loaded here -->
+        <header>
+            <h1>Notification Agent Admin</h1>
+            <p class="subtitle">Generate context-aware notifications for your campaigns</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Generation Settings</h2>
+
+                <div class="form-group">
+                    <label for="companySelect">Company</label>
+                    <select id="companySelect" disabled>
+                        <option value="">Select a company</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="campaignSelect">Campaign</label>
+                    <select id="campaignSelect" disabled>
+                        <option value="">Select a campaign</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="topicSelect">Topic</label>
+                    <select id="topicSelect" disabled>
+                        <option value="">Select a topic</option>
+                        <option value="agriculture">Agriculture</option>
+                        <option value="sports">Sports</option>
+                        <option value="business">Business</option>
+                        <option value="technologies">Technologies</option>
+                        <option value="latest">Latest</option>
+                    </select>
+                </div>
+
+                <div class="actions">
+                    <button class="btn" id="generateBtn" disabled>Generate Notifications</button>
+                </div>
+                <p class="polling-info">Polling every 20 seconds (local LLM may take 6-8 minutes)</p>
+            </div>
+
+            <div class="card">
+                <h2>Campaign Details</h2>
+                <div class="campaign-details" id="campaignDetails">
+                    <div class="detail-grid" id="campaignDetailsContent">
+                        <div class="empty-state">Select a campaign to view details.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Generated Suggestions</h2>
+            <div id="suggestionsList" class="suggestions-list">
+                <div class="empty-state">Generate notifications to see suggestions here.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Selected for Publish <span class="selected-count" id="selectedCount">(0)</span></h2>
+            <div id="selectedList" class="selected-list">
+                <div class="empty-state">Select suggestions to add them here.</div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-success" id="publishBtn" disabled>Publish Selected</button>
+            </div>
         </div>
     </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+        const ADMIN_ID = '22222222-2222-2222-2222-222222222222';
+        const POLL_INTERVAL_MS = 20000;
+        const MAX_POLL_ATTEMPTS = 40;
+
+        const state = {
+            companies: [],
+            campaigns: [],
+            selectedCompanyId: '',
+            selectedCampaignId: '',
+            selectedCampaign: null,
+            selectedTopic: '',
+            currentSessionId: '',
+            allSuggestions: [],
+            selectedSuggestions: [],
+            pollingInterval: null,
+            pollAttempts: 0
+        };
+
+        const elements = {
+            companySelect: document.getElementById('companySelect'),
+            campaignSelect: document.getElementById('campaignSelect'),
+            topicSelect: document.getElementById('topicSelect'),
+            generateBtn: document.getElementById('generateBtn'),
+            publishBtn: document.getElementById('publishBtn'),
+            campaignDetails: document.getElementById('campaignDetails'),
+            campaignDetailsContent: document.getElementById('campaignDetailsContent'),
+            suggestionsList: document.getElementById('suggestionsList'),
+            selectedList: document.getElementById('selectedList'),
+            selectedCount: document.getElementById('selectedCount')
+        };
+
+        async function fetchCompanies() {
+            try {
+                const response = await fetch(`${API_BASE}/companies`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch companies: ${response.status}`);
+                }
+                state.companies = await response.json();
+                populateCompanyDropdown();
+            } catch (error) {
+                showFloater(`Failed to fetch companies: ${error.message}`, 'error');
+            }
+        }
+
+        function populateCompanyDropdown() {
+            elements.companySelect.innerHTML = '<option value="">Select a company</option>';
+            state.companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = company.name;
+                elements.companySelect.appendChild(option);
+            });
+            elements.companySelect.disabled = false;
+        }
+
+        async function fetchCampaigns(companyId) {
+            try {
+                const response = await fetch(`${API_BASE}/companies/${companyId}/campaigns`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch campaigns: ${response.status}`);
+                }
+                state.campaigns = await response.json();
+                populateCampaignDropdown();
+            } catch (error) {
+                showFloater(`Failed to fetch campaigns: ${error.message}`, 'error');
+            }
+        }
+
+        function populateCampaignDropdown() {
+            elements.campaignSelect.innerHTML = '<option value="">Select a campaign</option>';
+            state.campaigns.forEach(campaign => {
+                const option = document.createElement('option');
+                option.value = campaign.id;
+                option.textContent = campaign.name;
+                elements.campaignSelect.appendChild(option);
+            });
+            elements.campaignSelect.disabled = state.campaigns.length === 0;
+            updateGenerateButton();
+        }
+
+        function displayCampaignDetails(campaign) {
+            if (!campaign) {
+                elements.campaignDetails.classList.add('hidden');
+                elements.campaignDetailsContent.innerHTML = '';
+                return;
+            }
+
+            const fields = [
+                ['Name', campaign.name],
+                ['Description', campaign.description || 'N/A'],
+                ['Theme', campaign.theme],
+                ['Category', campaign.category],
+                ['Brand Voice', campaign.brand_voice || 'N/A'],
+                ['Target Audience', campaign.target_audience || 'N/A'],
+                ['Industry', campaign.industry || 'N/A'],
+                ['Status', campaign.status],
+                ['Start Date', formatDate(campaign.start_date)],
+                ['End Date', formatDate(campaign.end_date)]
+            ];
+
+            elements.campaignDetailsContent.innerHTML = fields.map(([label, value]) => `
+                <div class="detail-item ${value && value.length > 40 ? 'full-width' : ''}">
+                    <div class="detail-label">${label}</div>
+                    <div class="detail-value">${value}</div>
+                </div>
+            `).join('');
+            elements.campaignDetails.classList.remove('hidden');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleString();
+        }
+
+        async function generateNotifications() {
+            if (!state.selectedCompanyId || !state.selectedCampaignId || !state.selectedTopic) {
+                showFloater('Please select company, campaign, and topic before generating.', 'error');
+                return;
+            }
+
+            const payload = {
+                topic: state.selectedTopic,
+                campaign_id: state.selectedCampaignId,
+                company_id: state.selectedCompanyId,
+                admin_id: ADMIN_ID
+            };
+
+            try {
+                setLoading(true);
+                const response = await fetch(`${API_BASE}/notification-sessions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create session: ${response.status}`);
+                }
+
+                const data = await response.json();
+                state.currentSessionId = data.session_id;
+                state.pollAttempts = 0;
+                startPolling();
+            } catch (error) {
+                showFloater(`Failed to generate notifications: ${error.message}`, 'error');
+                setLoading(false);
+            }
+        }
+
+        function startPolling() {
+            if (state.pollingInterval) {
+                clearInterval(state.pollingInterval);
+            }
+            state.pollingInterval = setInterval(pollSession, POLL_INTERVAL_MS);
+        }
+
+        async function pollSession() {
+            if (!state.currentSessionId || !state.selectedCompanyId) return;
+
+            state.pollAttempts++;
+
+            try {
+                const response = await fetch(`${API_BASE}/company/${state.selectedCompanyId}/notification-sessions/${state.currentSessionId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch session: ${response.status}`);
+                }
+
+                const session = await response.json();
+
+                if (session.status === 'AWAITING_REVIEW') {
+                    stopPolling();
+                    state.allSuggestions = session.all_suggestions || [];
+                    renderSuggestions();
+                    showFloater(`Notifications Generated (${state.allSuggestions.length} suggestions)`, 'success');
+                    setLoading(false);
+                } else if (session.status === 'FAILED') {
+                    stopPolling();
+                    showFloater('Notification generation failed. Please try again.', 'error');
+                    setLoading(false);
+                } else if (state.pollAttempts >= MAX_POLL_ATTEMPTS) {
+                    stopPolling();
+                    showFloater('Polling timeout. Generation may still be running. Please check back later.', 'error');
+                    setLoading(false);
+                }
+            } catch (error) {
+                showFloater(`Polling error: ${error.message}`, 'error');
+            }
+        }
+
+        function stopPolling() {
+            if (state.pollingInterval) {
+                clearInterval(state.pollingInterval);
+                state.pollingInterval = null;
+            }
+        }
+
+        function renderSuggestions() {
+            if (state.allSuggestions.length === 0) {
+                elements.suggestionsList.innerHTML = '<div class="empty-state">No suggestions generated.</div>';
+                return;
+            }
+
+            elements.suggestionsList.innerHTML = state.allSuggestions.map(suggestion => {
+                const isSelected = state.selectedSuggestions.some(s => s.id === suggestion.id);
+                return `
+                    <div class="suggestion-item">
+                        <input type="checkbox" 
+                               id="suggestion-${suggestion.id}" 
+                               ${isSelected ? 'checked' : ''} 
+                               onchange="toggleSuggestion('${suggestion.id}')">
+                        <div>
+                            <div class="suggestion-text">${escapeHtml(suggestion.notification_text || suggestion.text || '')}</div>
+                            <div class="news-headline">📰 ${escapeHtml(suggestion.news_headline || 'No headline available')}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleSuggestion(suggestionId) {
+            const suggestion = state.allSuggestions.find(s => s.id === suggestionId);
+            if (!suggestion) return;
+
+            const existingIndex = state.selectedSuggestions.findIndex(s => s.id === suggestionId);
+            if (existingIndex >= 0) {
+                state.selectedSuggestions.splice(existingIndex, 1);
+            } else {
+                state.selectedSuggestions.push(suggestion);
+            }
+
+            renderSuggestions();
+            renderSelectedSuggestions();
+            updatePublishButton();
+        }
+
+        function renderSelectedSuggestions() {
+            elements.selectedCount.textContent = `(${state.selectedSuggestions.length})`;
+
+            if (state.selectedSuggestions.length === 0) {
+                elements.selectedList.innerHTML = '<div class="empty-state">Select suggestions to add them here.</div>';
+                return;
+            }
+
+            elements.selectedList.innerHTML = state.selectedSuggestions.map(suggestion => `
+                <div class="selected-item">
+                    <div class="selected-text">${escapeHtml(suggestion.notification_text || suggestion.text || '')}</div>
+                    <button class="btn btn-danger" onclick="removeSelectedSuggestion('${suggestion.id}')">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function removeSelectedSuggestion(suggestionId) {
+            state.selectedSuggestions = state.selectedSuggestions.filter(s => s.id !== suggestionId);
+            renderSuggestions();
+            renderSelectedSuggestions();
+            updatePublishButton();
+        }
+
+        async function publishNotifications() {
+            if (state.selectedSuggestions.length === 0) {
+                showFloater('Please select at least one suggestion to publish.', 'error');
+                return;
+            }
+
+            const payload = {
+                selected_suggestion_ids: state.selectedSuggestions.map(s => s.id)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/company/${state.selectedCompanyId}/notification-sessions/${state.currentSessionId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to publish: ${response.status}`);
+                }
+
+                showFloater(`Successfully Published (${state.selectedSuggestions.length} notification(s))`, 'success');
+                state.selectedSuggestions = [];
+                renderSelectedSuggestions();
+                updatePublishButton();
+            } catch (error) {
+                showFloater(`Failed to publish: ${error.message}`, 'error');
+            }
+        }
+
+        function showFloater(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'opacity 0.3s, transform 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function updateGenerateButton() {
+            elements.generateBtn.disabled = !(
+                state.selectedCompanyId && 
+                state.selectedCampaignId && 
+                state.selectedTopic
+            );
+        }
+
+        function updatePublishButton() {
+            elements.publishBtn.disabled = state.selectedSuggestions.length === 0;
+        }
+
+        function setLoading(isLoading) {
+            elements.generateBtn.disabled = isLoading;
+            if (isLoading) {
+                elements.generateBtn.innerHTML = '<span class="spinner"></span> Generating...';
+            } else {
+                elements.generateBtn.textContent = 'Generate Notifications';
+                updateGenerateButton();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        elements.companySelect.addEventListener('change', (event) => {
+            state.selectedCompanyId = event.target.value;
+            state.selectedCampaignId = '';
+            state.selectedCampaign = null;
+            state.selectedTopic = '';
+            state.campaigns = [];
+            state.allSuggestions = [];
+            state.selectedSuggestions = [];
+            elements.campaignSelect.innerHTML = '<option value="">Select a campaign</option>';
+            elements.topicSelect.value = '';
+            elements.topicSelect.disabled = !state.selectedCompanyId;
+            displayCampaignDetails(null);
+            renderSuggestions();
+            renderSelectedSuggestions();
+            updateGenerateButton();
+            updatePublishButton();
+
+            if (state.selectedCompanyId) {
+                fetchCampaigns(state.selectedCompanyId);
+            }
+        });
+
+        elements.campaignSelect.addEventListener('change', (event) => {
+            state.selectedCampaignId = event.target.value;
+            state.selectedCampaign = state.campaigns.find(c => c.id === state.selectedCampaignId) || null;
+            state.allSuggestions = [];
+            state.selectedSuggestions = [];
+            displayCampaignDetails(state.selectedCampaign);
+            renderSuggestions();
+            renderSelectedSuggestions();
+            updateGenerateButton();
+            updatePublishButton();
+        });
+
+        elements.topicSelect.addEventListener('change', (event) => {
+            state.selectedTopic = event.target.value;
+            updateGenerateButton();
+        });
+
+        elements.generateBtn.addEventListener('click', generateNotifications);
+        elements.publishBtn.addEventListener('click', publishNotifications);
+
+        // Initialize
+        fetchCompanies();
+    </script>
 </body>
 </html>
