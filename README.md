@@ -2,9 +2,13 @@
 
 A scalable, multi-tenant service for generating context-aware notifications using AI.
 
+## Video Demo
+
+**Watch the demo:** [https://youtu.be/PVdfmS1AIRw](https://youtu.be/PVdfmS1AIRw)
+
 ## Project Overview
 
-This project implements a backend service that allows B2C enterprise customers to generate timely, context-aware notifications for their end-users. The system leverages a Large Language Model (LLM) agent to craft notification suggestions based on real-time news, company campaigns, and brand identity.
+This project implements a full-stack application that allows B2C enterprise customers to generate timely, context-aware notifications for their end-users. The backend exposes a RESTful API and background agent, while the admin UI provides a human-in-the-loop workflow for reviewing and publishing AI-generated notification suggestions based on real-time news, company campaigns, and brand identity.
 
 ## Features
 
@@ -22,7 +26,7 @@ The application uses a background thread pool for asynchronous task processing. 
 ## Prerequisites
 
 - Python 3.9+
-- PostgreSQL 13+
+- PostgreSQL 12+
 - Ollama (for local LLM inference)
 - (Optional) Docker and Docker Compose
 
@@ -69,15 +73,14 @@ OLLAMA_MODEL=gemma4:e2b
 
 ### 4. Initialize the database
 
-Ensure PostgreSQL is running and the database exists, then run migrations:
+Ensure PostgreSQL is running, then run the database setup script:
 
 ```bash
-# Create database if needed
-psql -U postgres -c "CREATE DATABASE notification_agent;"
-
-# Run database migrations
-alembic upgrade head
+# Create database, tables, and seed dummy campaigns
+python scripts/setup_db.py
 ```
+
+The database schema is defined in [`schema/db_schema.sql`](schema/db_schema.sql) and managed through the setup script.
 
 ### 5. Start the services
 
@@ -94,7 +97,7 @@ The API will be available at `http://localhost:8000`. Access the interactive API
 
 ## Admin UI
 
-The Phase 1 admin UI is available at `http://localhost:8000/static/admin.html`.
+The admin UI is available at `http://localhost:8000/static/admin.html`.
 
 ### Features
 - **Company dropdown**: Shows distinct company names derived from the campaigns table
@@ -160,7 +163,7 @@ Response:
 
 ### Create notification session (sync)
 
-Creates a session and blocks until notifications are generated. Returns the full session with suggestions.
+Creates a session and blocks until notifications are generated. Returns the session ID, status, and generated suggestions.
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/company/a639cab1-240b-4d66-b084-751009a88255/notification/sync" \
@@ -212,11 +215,12 @@ curl -X POST "http://localhost:8000/api/v1/company/{company_id}/notification-ses
 │   ├── models/               # Database models
 │   ├── schemas/              # Pydantic models
 │   └── agent/                # AI agent implementation
+├── schema/                   # Database schema SQL
+├── scripts/                  # Database setup scripts
+├── static/                   # Static files (admin UI)
 ├── tests/                    # Test files
-├── alembic/                  # Database migrations
-├── .env                      # Environment variables
+├── .env.example              # Environment variable template
 ├── .gitignore
-├── alembic.ini               # Alembic configuration
 ├── requirements.txt          # Project dependencies
 └── README.md
 ```
@@ -240,15 +244,14 @@ isort .
 flake8
 ```
 
-### Database Migrations
+### Database Setup
 
 ```bash
-# Create a new migration
-alembic revision --autogenerate -m "description of changes"
-
-# Apply migrations
-alembic upgrade head
+# Create database, tables, and seed dummy campaigns
+python scripts/setup_db.py
 ```
+
+The database schema is defined in [`schema/db_schema.sql`](schema/db_schema.sql).
 
 ## API Documentation
 
