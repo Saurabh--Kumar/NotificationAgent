@@ -11,6 +11,7 @@ services:
       - POSTGRES_DB=notification_agent
       - SECRET_KEY=dev-secret-key
       - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_MODEL=gemma4:e2b
     depends_on:
       db:
