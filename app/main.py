@@ -38,7 +38,7 @@ app.add_middleware(
 )
 
 # Include API routers
-app.include_router(health_router, prefix="/health", tags=["Health"])
+app.include_router(health_router, tags=["Health"])
 app.include_router(notification_sessions_router, prefix="/api/v1", tags=["Notification Sessions"])
 app.include_router(notification_sync_router, prefix="/api/v1", tags=["Notification Sync"])
 app.include_router(companies_router, prefix="/api/v1", tags=["Companies"])

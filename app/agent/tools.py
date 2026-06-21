@@ -4,7 +4,7 @@ import time
 from typing import Optional, List, Tuple
 from uuid import UUID
 from sqlalchemy.orm import Session
-from langchain.tools import tool
+from langchain_core.tools import tool
 import httpx
 from httpx import Timeout
 

@@ -25,8 +25,8 @@ The application uses a background thread pool for asynchronous task processing. 
 
 ## Prerequisites
 
-- Python 3.9+
-- PostgreSQL 12+
+- Python 3.12+
+- PostgreSQL 16+
 - Ollama (for local LLM inference)
 - (Optional) Docker and Docker Compose
 
@@ -39,7 +39,85 @@ git clone <repository-url>
 cd NotificationAgent
 ```
 
-### 2. Set up the environment
+### 2. Docker Setup (Recommended)
+
+The easiest way to run the full stack is with Docker Compose. This will automatically start PostgreSQL, Ollama, and the web application with all dependencies.
+
+**Important:** Run these commands from the project root directory (where `docker-compose.yml` is located).
+
+#### First Run (Model Download Required)
+
+On the first run, the `gemma4:e2b` model (~7.1 GB) will be downloaded automatically. This can take several minutes depending on your internet speed.
+
+```bash
+# Build and start all services (foreground mode to see progress)
+docker compose build --no-cache
+docker compose up
+```
+
+**Why `docker compose up` without `-d`?** The web container must download the Ollama model on first run. Running in foreground mode shows real-time download progress and blocks until the app is fully ready. You'll see logs like:
+```
+web-1  | {"status":"pulling 4e30e2665218","total":7162394016,"completed":...}
+web-1  | {"status":"success"}
+web-1  | Running database setup...
+web-1  | Starting application...
+web-1  | INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+
+Once you see `Uvicorn running`, the app is ready. Press `Ctrl+C` to stop the containers.
+
+#### Subsequent Runs
+
+After the model is downloaded, you can use detached mode:
+
+```bash
+docker compose up -d
+```
+
+#### View Logs
+
+```bash
+# Follow web container logs
+docker compose logs -f web
+
+# Check Ollama container logs
+docker compose logs ollama
+
+# Check database container logs
+docker compose logs db
+```
+
+#### Stop Services
+
+```bash
+docker compose down
+```
+
+#### What Docker Compose Sets Up
+
+- **PostgreSQL 16** database with persistent storage
+- **Ollama** with the `gemma4:e2b` model auto-pulled on first run
+- **Web application** with automatic database initialization and seed data
+- All services are orchestrated with healthchecks and restart policies
+
+#### Container Status vs App Readiness
+
+- `docker compose ps` showing `State: Up` means the container process is running
+- The app may still be initializing (downloading model, running DB setup)
+- Use `docker compose logs web` to see actual app status
+- The health endpoint at `http://localhost:8000/health` returns 200 only when the app is fully ready
+
+#### Access the Application
+
+- Admin UI: `http://localhost:8000/static/admin.html`
+- API docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
+
+### 3. Manual Setup (Alternative)
+
+If you prefer to run without Docker, follow these steps:
+
+#### Set up the environment
 
 ```bash
 # Create and activate virtual environment
@@ -50,7 +128,7 @@ source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
+#### Configure environment variables
 
 Create a `.env` file in the project root with the following variables:
 
@@ -71,7 +149,7 @@ OLLAMA_MODEL=gemma4:e2b
 
 ```
 
-### 4. Initialize the database
+#### Initialize the database
 
 Ensure PostgreSQL is running, then run the database setup script:
 
@@ -82,7 +160,7 @@ python scripts/setup_db.py
 
 The database schema is defined in [`schema/db_schema.sql`](schema/db_schema.sql) and managed through the setup script.
 
-### 5. Start the services
+#### Start the services
 
 ```bash
 # Start Ollama (in a separate terminal)

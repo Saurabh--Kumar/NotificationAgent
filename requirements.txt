@@ -18,8 +18,9 @@ httpx==0.25.2
 
 # AI/ML
 langchain==0.0.350
-langgraph==0.0.17
+langchain-core==0.2.43
 langchain-ollama==0.1.0
+langgraph==0.0.17
 
 # Environment
 python-dotenv==1.0.0
@@ -35,6 +36,3 @@ black==23.11.0
 isort==5.12.0
 flake8==6.1.0
 mypy==1.7.1
-
-# Documentation
-python-multipart==0.0.6
