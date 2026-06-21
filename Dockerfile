@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -8,16 +8,27 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Install system dependencies
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && apt-get install -y --no-install-recommends libpq-dev curl postgresql-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
 # Install python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements.txt
 
 # Copy application code
 COPY . .
+
+# Make entrypoint executable and set ownership
+RUN chmod +x /app/docker-entrypoint.sh \
+    && chown -R appuser:appuser /app
+USER appuser
+
+# Use entrypoint script
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 
 # Expose port
 EXPOSE 8000

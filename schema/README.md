@@ -5,7 +5,7 @@ This directory contains SQL scripts for setting up the database schema for the N
 ## Setup Instructions
 
 1. **Prerequisites**:
-   - PostgreSQL 12+
+   - PostgreSQL 16+
    - `uuid-ossp` extension (included in standard PostgreSQL installation)
 
 2. **Creating the Database**:

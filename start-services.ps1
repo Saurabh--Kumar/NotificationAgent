@@ -45,7 +45,7 @@ if (Test-Port 5432) {
         -e POSTGRES_PASSWORD=postgres `
         -e POSTGRES_DB=notification_agent `
         -p 5432:5432 `
-        postgres:15
+        postgres:16
     
     Write-Host "Waiting for PostgreSQL to be ready..." -ForegroundColor Cyan
     Start-Sleep -Seconds 5
