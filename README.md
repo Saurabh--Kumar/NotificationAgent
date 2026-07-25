@@ -4,7 +4,7 @@ A scalable, multi-tenant service for generating context-aware notifications usin
 
 ## Video Demo
 
-**Watch the demo:** [https://youtu.be/PVdfmS1AIRw](https://youtu.be/PVdfmS1AIRw)
+[![Demo Video](https://img.youtube.com/vi/PVdfmS1AIRw/0.jpg)](https://youtu.be/PVdfmS1AIRw)
 
 ## Project Overview
 
